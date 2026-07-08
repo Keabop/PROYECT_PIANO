@@ -1,21 +1,26 @@
-// Wrapper de Tone.js para reproducir notas de referencia, acordes, secuencias y el
-// clic del metrónomo.
+// Motor de sonido de la app.
+//
+// Instrumento principal: Tone.Sampler con muestras REALES del Salamander Grand Piano
+// (Yamaha C5, CC BY 3.0, ver public/samples/piano/README.md) — una muestra cada
+// tercera menor entre C2 y C7; el resto se interpola por pitch-shifting. Mientras las
+// muestras cargan (~1.4 MB, perezoso) suena un sintetizador de respaldo, y se cambia
+// automáticamente al piano real en cuanto está listo. Una reverberación corta de sala
+// da el aire acústico.
 //
 // Decisiones importantes para móvil:
-// - ensureAudio() reanuda el AudioContext SIEMPRE que no esté en 'running' (en móvil
-//   se suspende al perder foco, al abrir el micrófono, etc.).
-// - Las secuencias se programan con setTimeout de JS, NO en la línea de tiempo del
-//   AudioContext: así un nuevo clic CANCELA la secuencia anterior (sin apilar notas
-//   → sin "Max polyphony exceeded") y un contexto que se reanuda tarde no dispara
-//   decenas de notas de golpe.
-// - El AudioContext de Tone se comparte con el micrófono (ver useMicrophone), para
-//   que entrada y salida vivan en la misma sesión de audio del sistema.
+// - ensureAudio() reanuda el AudioContext SIEMPRE que no esté en 'running'.
+// - Las secuencias se programan con setTimeout de JS: un nuevo clic cancela la
+//   anterior (sin apilar voces) y un contexto reanudado tarde no dispara ráfagas.
+// - El AudioContext de Tone se comparte con el micrófono (ver useMicrophone).
 
 import * as Tone from 'tone';
 import { midiToFreq } from './noteUtils';
 
-let piano: Tone.PolySynth | null = null;
+let sampler: Tone.Sampler | null = null;
+let samplerReady = false;
+let fallback: Tone.PolySynth | null = null;
 let metroSynth: Tone.MembraneSynth | null = null;
+let reverb: Tone.Reverb | null = null;
 
 // Temporizadores de la secuencia en curso (para poder cancelarla).
 let pendingTimers: ReturnType<typeof setTimeout>[] = [];
@@ -23,6 +28,55 @@ let pendingTimers: ReturnType<typeof setTimeout>[] = [];
 /** El AudioContext crudo de Tone — compartido con el micrófono. */
 export function getSharedAudioContext(): AudioContext {
   return Tone.getContext().rawContext as AudioContext;
+}
+
+// Muestras disponibles (cada tercera menor, C2..C7). "Ds" = D#, "Fs" = F#.
+const SAMPLE_URLS: Record<string, string> = {
+  C2: 'C2.mp3', 'D#2': 'Ds2.mp3', 'F#2': 'Fs2.mp3', A2: 'A2.mp3',
+  C3: 'C3.mp3', 'D#3': 'Ds3.mp3', 'F#3': 'Fs3.mp3', A3: 'A3.mp3',
+  C4: 'C4.mp3', 'D#4': 'Ds4.mp3', 'F#4': 'Fs4.mp3', A4: 'A4.mp3',
+  C5: 'C5.mp3', 'D#5': 'Ds5.mp3', 'F#5': 'Fs5.mp3', A5: 'A5.mp3',
+  C6: 'C6.mp3', 'D#6': 'Ds6.mp3', 'F#6': 'Fs6.mp3', A6: 'A6.mp3',
+  C7: 'C7.mp3',
+};
+
+function setupInstruments(): void {
+  if (!reverb) {
+    // Sala pequeña y discreta: da cuerpo sin emborronar.
+    reverb = new Tone.Reverb({ decay: 1.9, preDelay: 0.02, wet: 0.16 }).toDestination();
+  }
+  if (!fallback) {
+    fallback = new Tone.PolySynth(Tone.Synth, {
+      oscillator: { type: 'triangle' },
+      envelope: { attack: 0.005, decay: 0.3, sustain: 0.25, release: 1.2 },
+      volume: -10,
+    }).connect(reverb);
+    fallback.maxPolyphony = 64;
+  }
+  if (!sampler) {
+    const base = (import.meta as unknown as { env?: { BASE_URL?: string } }).env?.BASE_URL ?? '/';
+    sampler = new Tone.Sampler({
+      urls: SAMPLE_URLS,
+      baseUrl: `${base}samples/piano/`,
+      release: 1.4,
+      volume: -1,
+      onload: () => {
+        samplerReady = true;
+      },
+      onerror: () => {
+        // Sin red o muestras corruptas: seguimos con el sintetizador de respaldo.
+        samplerReady = false;
+      },
+    }).connect(reverb);
+  }
+  if (!metroSynth) {
+    metroSynth = new Tone.MembraneSynth({ volume: -6 }).toDestination();
+  }
+}
+
+/** Instrumento activo: piano muestreado si ya cargó, si no el de respaldo. */
+function instrument(): Tone.Sampler | Tone.PolySynth {
+  return samplerReady && sampler ? sampler : fallback!;
 }
 
 /**
@@ -42,37 +96,39 @@ export async function ensureAudio(): Promise<void> {
   if (raw.state === 'suspended') {
     await raw.resume().catch(() => {});
   }
-  if (!piano) {
-    piano = new Tone.PolySynth(Tone.Synth, {
-      oscillator: { type: 'triangle' },
-      envelope: { attack: 0.005, decay: 0.3, sustain: 0.25, release: 1.2 },
-      volume: -8,
-    }).toDestination();
-    piano.maxPolyphony = 64;
-  }
-  if (!metroSynth) {
-    metroSynth = new Tone.MembraneSynth({ volume: -6 }).toDestination();
-  }
+  setupInstruments();
 }
 
 /** Cancela cualquier secuencia pendiente y suelta las voces activas. */
 export function stopAll(): void {
   for (const t of pendingTimers) clearTimeout(t);
   pendingTimers = [];
-  piano?.releaseAll();
+  sampler?.releaseAll();
+  fallback?.releaseAll();
+}
+
+/** Velocidad "humana": pequeña variación para que no suene mecánico. */
+function humanVelocity(): number {
+  return 0.72 + Math.random() * 0.18;
 }
 
 /** Toca una nota (MIDI) durante `duration` segundos. */
 export async function playMidi(midi: number, duration = 0.6, a4 = 440): Promise<void> {
   await ensureAudio();
-  piano!.triggerAttackRelease(midiToFreq(midi, a4), duration);
+  instrument().triggerAttackRelease(midiToFreq(midi, a4), duration, Tone.now(), humanVelocity());
 }
 
-/** Toca un acorde (varias notas MIDI a la vez). */
+/**
+ * Toca un acorde (varias notas MIDI a la vez), con un micro-arpegiado de unos pocos
+ * milisegundos como el de un pianista real (dos manos nunca son exactas al 100%).
+ */
 export async function playChord(midis: number[], duration = 1.2, a4 = 440): Promise<void> {
   await ensureAudio();
-  const freqs = midis.map((m) => midiToFreq(m, a4));
-  piano!.triggerAttackRelease(freqs, duration);
+  const now = Tone.now();
+  const inst = instrument();
+  midis.forEach((m, i) => {
+    inst.triggerAttackRelease(midiToFreq(m, a4), duration, now + i * 0.008, humanVelocity());
+  });
 }
 
 /**
@@ -86,7 +142,7 @@ export async function playSequence(midis: number[], gap = 0.5, duration = 0.45, 
     const timer = setTimeout(() => {
       // Si el contexto se suspendió a mitad de secuencia, no disparar en vano.
       if (Tone.getContext().state === 'running') {
-        piano!.triggerAttackRelease(midiToFreq(m, a4), duration);
+        instrument().triggerAttackRelease(midiToFreq(m, a4), duration, Tone.now(), humanVelocity());
       }
     }, i * gap * 1000);
     pendingTimers.push(timer);

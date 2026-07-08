@@ -29,6 +29,10 @@ de tu dispositivo**.
     sobre TensorFlow.js, seleccionable en Ajustes. Más robusto con pianos reales y ruido, a
     cambio de ~1 s de latencia. El modelo (~900 KB) se sirve localmente y se carga solo si lo
     activas; el audio nunca sale del navegador.
+- **Sonido de piano real**: las notas de referencia suenan con muestras del
+  [Salamander Grand Piano](https://archive.org/details/SalamanderGrandPianoV3) (Yamaha C5,
+  CC BY 3.0, ~1.4 MB cargados bajo demanda) vía Tone.Sampler, con reverberación de sala y
+  micro-humanización de velocidad; hay un sintetizador de respaldo mientras cargan.
 - **Teclado en pantalla** interactivo (resalta la nota objetivo y la que detecta el micro).
 - **Partituras** renderizadas con VexFlow (clave de Sol y de Fa).
 - **Herramientas**: afinador visual, metrónomo, teclado de referencia y ajustes.
