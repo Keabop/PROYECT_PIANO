@@ -15,15 +15,30 @@ describe('biblioteca de canciones (integridad de datos)', () => {
     }
   });
 
-  it('todas las notas están en rango de piano razonable (C2..C7)', () => {
+  it('todas las notas son números válidos en rango de piano (C2..C7)', () => {
     for (const song of LIBRARY) {
       for (const phrase of song.phrases) {
         for (const n of phrase.notes) {
+          // Un nombre mal escrito en N('...') produciría null/NaN: detectarlo aquí.
+          expect(Number.isFinite(n), `${song.id} / ${phrase.name}: nota inválida`).toBe(true);
           expect(n, `${song.id} / ${phrase.name}`).toBeGreaterThanOrEqual(36);
           expect(n, `${song.id} / ${phrase.name}`).toBeLessThanOrEqual(96);
         }
       }
     }
+  });
+
+  it('los ids son únicos y cada pieza tiene al menos 2 frases', () => {
+    const ids = LIBRARY.map((s) => s.id);
+    expect(new Set(ids).size).toBe(ids.length);
+    for (const song of LIBRARY) {
+      expect(song.phrases.length, song.id).toBeGreaterThanOrEqual(2);
+      expect(song.category, song.id).toBeTruthy();
+    }
+  });
+
+  it('la biblioteca creció al repertorio ampliado (≥30 piezas)', () => {
+    expect(LIBRARY.length).toBeGreaterThanOrEqual(30);
   });
 
   it('los tempos son razonables (40..200 BPM) y las duraciones positivas', () => {

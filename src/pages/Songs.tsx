@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowLeft, ArrowRight, CheckCircle2, Lock, Music, PartyPopper, RotateCcw, Trophy, Volume2 } from 'lucide-react';
-import { LIBRARY, phraseDurationsSec, phraseKey, songByIdLib, type LibrarySong } from '../data/library';
+import { CATEGORIES, LIBRARY, phraseDurationsSec, phraseKey, songByIdLib, type LibrarySong } from '../data/library';
 import type { Exercise } from '../data/curriculum';
 import ExerciseRunner, { type ExerciseResult } from '../practice/ExerciseRunner';
 import { playTimedSequence } from '../audio/synth';
@@ -33,45 +33,56 @@ export function SongList() {
         </p>
       </header>
 
-      <div className="grid gap-3">
-        {LIBRARY.map((song) => {
-          const mastery = songMastery(lessons, song.id);
-          const dominated = isSongDominated(lessons, song.id);
-          const bronzeCount = song.phrases.filter(
-            (_, i) => MASTERY_RANK[masteryOf(lessons[phraseKey(song.id, i)])] >= MASTERY_RANK.bronze
-          ).length;
-          return (
-            <Link
-              key={song.id}
-              to={`/canciones/${song.id}`}
-              className="card p-4 flex items-center gap-4 hover:bg-piano-surface2 transition"
-            >
-              <span className="text-3xl">{song.emoji}</span>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <h3 className="font-semibold truncate">{song.title}</h3>
-                  {dominated ? (
-                    <Trophy size={16} className="text-piano-warn shrink-0" />
-                  ) : (
-                    mastery !== 'new' && <span className="shrink-0">{MASTERY_LABEL[mastery]}</span>
-                  )}
-                </div>
-                <p className="text-sm text-piano-muted truncate">{song.origin}</p>
-              </div>
-              <div className="text-right shrink-0">
-                <div className={`text-xs font-medium capitalize ${LEVEL_COLOR[song.level]}`}>{song.level}</div>
-                <div className="text-xs text-piano-muted mt-1">
-                  {bronzeCount}/{song.phrases.length} frases
-                </div>
-              </div>
-            </Link>
-          );
-        })}
-      </div>
+      {CATEGORIES.map((cat) => {
+        const songs = LIBRARY.filter((s) => s.category === cat.id);
+        if (songs.length === 0) return null;
+        return (
+          <section key={cat.id} className="flex flex-col gap-2">
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-piano-muted">
+              {cat.emoji} {cat.title} <span className="opacity-60">({songs.length})</span>
+            </h2>
+            <div className="grid gap-3">
+              {songs.map((song) => {
+                const mastery = songMastery(lessons, song.id);
+                const dominated = isSongDominated(lessons, song.id);
+                const bronzeCount = song.phrases.filter(
+                  (_, i) => MASTERY_RANK[masteryOf(lessons[phraseKey(song.id, i)])] >= MASTERY_RANK.bronze
+                ).length;
+                return (
+                  <Link
+                    key={song.id}
+                    to={`/canciones/${song.id}`}
+                    className="card p-4 flex items-center gap-4 hover:bg-piano-surface2 transition"
+                  >
+                    <span className="text-3xl">{song.emoji}</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-semibold truncate">{song.title}</h3>
+                        {dominated ? (
+                          <Trophy size={16} className="text-piano-warn shrink-0" />
+                        ) : (
+                          mastery !== 'new' && <span className="shrink-0">{MASTERY_LABEL[mastery]}</span>
+                        )}
+                      </div>
+                      <p className="text-sm text-piano-muted truncate">{song.origin}</p>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <div className={`text-xs font-medium capitalize ${LEVEL_COLOR[song.level]}`}>{song.level}</div>
+                      <div className="text-xs text-piano-muted mt-1">
+                        {bronzeCount}/{song.phrases.length} frases
+                      </div>
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+          </section>
+        );
+      })}
 
       <p className="text-xs text-piano-muted">
-        Las piezas marcadas como «fragmento simplificado» son transcripciones libres y breves con fines
-        educativos; el resto del repertorio es de dominio público.
+        Las piezas marcadas como «arreglo simplificado» son transcripciones libres de una sola voz con fines
+        educativos, para uso personal; el resto del repertorio es de dominio público.
       </p>
     </div>
   );

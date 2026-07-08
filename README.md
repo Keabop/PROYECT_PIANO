@@ -15,12 +15,15 @@ de tu dispositivo**.
   ritmo, primeras melodías, lectura de partituras, escalas, intervalos, acordes, progresiones,
   dos manos, escalas menores, círculo de quintas, inversiones, séptimas, arpegios, expresión y
   lectura a primera vista.
-- **Biblioteca de canciones** (sección *Canciones*): 13 piezas divididas en frases —
-  Oda a la Alegría, Für Elise, Canon en Re, Gymnopédie n.º 1, Claro de Luna, Greensleeves,
-  Cumpleaños feliz, Jingle Bells, Amazing Grace y más, además de fragmentos breves
-  simplificados de los temas de **Interstellar** y **La La Land**. Cada frase se estudia con
-  partitura, modo escuchar y validación nota a nota por micrófono; el progreso por frase
-  queda guardado.
+- **Biblioteca de canciones** (sección *Canciones*): **34 piezas** en 4 categorías, por frases
+  y con ritmo real. **Clásica** (Für Elise, Canon en Re, Claro de Luna, Nocturno de Chopin,
+  Clair de Lune, Marcha Turca, The Entertainer, Grieg, El Lago de los Cisnes, Habanera…),
+  **Tradicional** (Cielito Lindo, Las Mañanitas, La Cucaracha, Greensleeves, Jingle Bells…),
+  **Cine y series** (Interstellar, La La Land, Titanic, Harry Potter, Piratas del Caribe,
+  Amélie) y **Moderna** (Runaway de Kanye West, River Flows in You, Nuvole Bianche, Sweden de
+  Minecraft). Las piezas con copyright van como arreglos simplificados de una voz, etiquetados;
+  el resto es dominio público. Cada frase se estudia con partitura, modo escuchar y validación
+  nota a nota por micrófono, con el sistema de medallas.
 - **Detección de notas por micrófono** (tres motores, todos en tu dispositivo):
   - *Monofónica* (autocorrelación / McLeod Pitch Method) para notas sueltas, escalas y afinador.
   - *Polifónica* (FFT + saliencia armónica + resta iterativa) para **acordes tocados a la vez**,
