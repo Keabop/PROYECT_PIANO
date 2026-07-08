@@ -6,6 +6,7 @@ import Dashboard from './pages/Dashboard';
 import Curriculum from './pages/Curriculum';
 import Lesson from './pages/Lesson';
 import Practice from './pages/Practice';
+import { SongDetail, SongList } from './pages/Songs';
 import Tools from './pages/Tools';
 import EarTraining from './pages/EarTraining';
 import Progress from './pages/Progress';
@@ -28,6 +29,8 @@ export default function App() {
         <Route path="/curriculum" element={<Curriculum />} />
         <Route path="/leccion/:moduleId/:lessonId" element={<Lesson />} />
         <Route path="/practica" element={<Practice />} />
+        <Route path="/canciones" element={<SongList />} />
+        <Route path="/canciones/:songId" element={<SongDetail />} />
         <Route path="/herramientas" element={<Tools />} />
         <Route path="/oido" element={<EarTraining />} />
         <Route path="/progreso" element={<Progress />} />

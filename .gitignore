@@ -9,3 +9,5 @@ coverage
 .idea
 *.log
 npm-debug.log*
+e2e/audio/
+e2e/shots/

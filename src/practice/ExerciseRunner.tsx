@@ -25,6 +25,7 @@ export default function ExerciseRunner({ exercise, onComplete }: ExerciseRunnerP
 
 function PlayExercise({ exercise, onComplete }: { exercise: Exclude<Exercise, { kind: 'quiz' }>; onComplete: () => void }) {
   const a4 = useSettingsStore((s) => s.a4);
+  const detectionEngine = useSettingsStore((s) => s.detectionEngine);
   const chord = exercise.kind === 'playChord';
   const targets = useMemo<number[]>(
     () => (exercise.kind === 'playNote' ? [exercise.target] : exercise.targets),
@@ -33,9 +34,9 @@ function PlayExercise({ exercise, onComplete }: { exercise: Exclude<Exercise, { 
   const showStaff = exercise.kind === 'playSequence' && exercise.showStaff;
   const clef = exercise.kind === 'playSequence' ? exercise.clef ?? 'treble' : 'treble';
 
-  const mic = useMicrophone({ mode: chord ? 'poly' : 'mono', a4 });
+  const mic = useMicrophone({ mode: chord ? 'poly' : 'mono', engine: detectionEngine, a4 });
   const micActive = mic.status === 'active';
-  const matcher = useNoteMatcher({ targets, chord, enabled: micActive, midi: mic.midi, activeNotes: mic.activeNotes });
+  const matcher = useNoteMatcher({ targets, chord, enabled: micActive, midi: mic.midi, activeNotes: mic.activeNotes, tick: mic.tick });
 
   // Progreso manual (fallback sin micrófono, tocando el teclado en pantalla).
   const [manualIndex, setManualIndex] = useState(0);
@@ -124,6 +125,8 @@ function PlayExercise({ exercise, onComplete }: { exercise: Exclude<Exercise, { 
       {chord && micActive && !done && (
         <p className="text-sm text-piano-muted">
           Notas detectadas a la vez: {mic.activeNotes.length}. Mantén las {targets.length} notas del acorde juntas.
+          {detectionEngine === 'ml' && mic.mlStatus === 'loading' && ' (cargando motor ML…)'}
+          {detectionEngine === 'ml' && mic.mlStatus === 'ready' && ' · Motor ML activo'}
         </p>
       )}
 

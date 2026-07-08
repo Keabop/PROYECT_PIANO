@@ -1,13 +1,18 @@
-// Hook de React que gestiona el micrófono y ejecuta la detección de tono en vivo.
-// Soporta dos modos: 'mono' (una nota, para afinador/melodías) y 'poly' (acordes).
+// Hook de React que gestiona el micrófono y ejecuta la detección de notas en vivo.
+// Modos: 'mono' (una nota: afinador/melodías) y 'poly' (acordes).
+// Motores para 'poly': 'standard' (FFT + saliencia armónica, instantáneo) o
+// 'ml' (Basic Pitch/TensorFlow.js, más robusto con pianos reales, mayor latencia).
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { detectPitch } from './pitchDetector';
 import { detectPolyphony, type ActiveNote } from './polyphonicDetector';
 import { centsOff, freqToNearestMidi } from './noteUtils';
+import { detectNotesML, getMLStatus, loadML, onMLStatus, resampleTo22050, type MLStatus } from './mlDetector';
+import { useSettingsStore } from '../store/useSettingsStore';
 
 export type MicStatus = 'idle' | 'requesting' | 'active' | 'denied' | 'unsupported' | 'error';
 export type DetectMode = 'mono' | 'poly';
+export type DetectEngine = 'standard' | 'ml';
 
 export interface MicState {
   status: MicStatus;
@@ -18,6 +23,10 @@ export interface MicState {
   cents: number; // desviación respecto a la nota más cercana
   volume: number; // 0..1 aprox
   activeNotes: ActiveNote[]; // notas detectadas (modo poly)
+  mlStatus: MLStatus; // estado del motor ML (si se usa)
+  /** Contador que avanza en cada análisis; permite a los consumidores reaccionar
+   *  a CADA lectura aunque la nota detectada no cambie (nota sostenida). */
+  tick: number;
 }
 
 const INITIAL: MicState = {
@@ -29,18 +38,22 @@ const INITIAL: MicState = {
   cents: 0,
   volume: 0,
   activeNotes: [],
+  mlStatus: 'idle',
+  tick: 0,
 };
 
 interface UseMicrophoneOptions {
   mode?: DetectMode;
+  engine?: DetectEngine; // solo aplica al modo 'poly'
   a4?: number;
-  /** ms entre análisis polifónicos (más pesado). El modo mono corre cada frame. */
+  /** ms entre análisis polifónicos. */
   polyIntervalMs?: number;
 }
 
 export function useMicrophone(options: UseMicrophoneOptions = {}) {
-  const { mode = 'mono', a4 = 440, polyIntervalMs = 90 } = options;
-  const [state, setState] = useState<MicState>(INITIAL);
+  const { mode = 'mono', engine = 'standard', a4 = 440, polyIntervalMs } = options;
+  const [state, setState] = useState<MicState>(() => ({ ...INITIAL, mlStatus: getMLStatus() }));
+  const micSensitivity = useSettingsStore((s) => s.micSensitivity);
 
   const ctxRef = useRef<AudioContext | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -49,7 +62,21 @@ export function useMicrophone(options: UseMicrophoneOptions = {}) {
   const rafRef = useRef<number | null>(null);
   const lastPolyRef = useRef(0);
   const modeRef = useRef<DetectMode>(mode);
+  const engineRef = useRef<DetectEngine>(engine);
+  const sensRef = useRef(micSensitivity);
   modeRef.current = mode;
+  engineRef.current = engine;
+  sensRef.current = micSensitivity;
+
+  // Refleja el estado del motor ML en el estado del hook.
+  useEffect(() => onMLStatus((s) => setState((prev) => ({ ...prev, mlStatus: s }))), []);
+
+  // Precarga el modelo ML en cuanto se selecciona ese motor (aunque el micro esté apagado).
+  useEffect(() => {
+    if (engine === 'ml' && mode === 'poly') {
+      loadML().catch(() => {});
+    }
+  }, [engine, mode]);
 
   const stop = useCallback(() => {
     if (rafRef.current != null) cancelAnimationFrame(rafRef.current);
@@ -61,7 +88,7 @@ export function useMicrophone(options: UseMicrophoneOptions = {}) {
     }
     ctxRef.current = null;
     analyserRef.current = null;
-    setState((s) => ({ ...INITIAL, status: s.status === 'denied' ? 'denied' : 'idle' }));
+    setState((s) => ({ ...INITIAL, mlStatus: s.mlStatus, status: s.status === 'denied' ? 'denied' : 'idle' }));
   }, []);
 
   const loop = useCallback(() => {
@@ -71,21 +98,38 @@ export function useMicrophone(options: UseMicrophoneOptions = {}) {
     if (!analyser || !ctx || !buf) return;
 
     analyser.getFloatTimeDomainData(buf);
+    const sens = sensRef.current; // 0 = estricto, 1 = permisivo
 
     if (modeRef.current === 'poly') {
+      const interval = polyIntervalMs ?? (engineRef.current === 'ml' ? 700 : 90);
       const now = performance.now();
-      if (now - lastPolyRef.current >= polyIntervalMs) {
+      if (now - lastPolyRef.current >= interval) {
         lastPolyRef.current = now;
-        const notes = detectPolyphony(buf, ctx.sampleRate, { a4, fftSize: 16384 });
         let vol = 0;
         for (let i = 0; i < buf.length; i++) vol += buf[i] * buf[i];
         vol = Math.min(1, Math.sqrt(vol / buf.length) * 6);
-        setState((s) => ({ ...s, activeNotes: notes, volume: vol }));
+
+        if (engineRef.current === 'ml') {
+          const mono22k = resampleTo22050(buf, ctx.sampleRate);
+          detectNotesML(mono22k)
+            .then((notes) => {
+              if (notes) setState((s) => ({ ...s, activeNotes: notes, volume: vol, tick: s.tick + 1 }));
+            })
+            .catch(() => {
+              // Si el motor ML falla en caliente, cae al estándar en el siguiente tick.
+              engineRef.current = 'standard';
+            });
+        } else {
+          const relThreshold = 0.3 - 0.16 * sens;
+          const notes = detectPolyphony(buf, ctx.sampleRate, { a4, fftSize: 16384, relThreshold });
+          setState((s) => ({ ...s, activeNotes: notes, volume: vol, tick: s.tick + 1 }));
+        }
       }
     } else {
-      // Modo mono: usa una ventana corta para baja latencia.
+      // Modo mono: ventana corta para baja latencia.
       const window = buf.subarray(0, 2048);
-      const res = detectPitch(window, ctx.sampleRate, { clarityThreshold: 0.9 });
+      const clarityThreshold = 0.95 - 0.15 * sens;
+      const res = detectPitch(window, ctx.sampleRate, { clarityThreshold });
       const midi = res.frequency > 0 ? freqToNearestMidi(res.frequency, a4) : null;
       const cents = res.frequency > 0 ? centsOff(res.frequency, a4) : 0;
       setState((s) => ({
@@ -95,6 +139,7 @@ export function useMicrophone(options: UseMicrophoneOptions = {}) {
         midi,
         cents,
         volume: Math.min(1, res.rms * 6),
+        tick: s.tick + 1,
       }));
     }
 
@@ -121,7 +166,9 @@ export function useMicrophone(options: UseMicrophoneOptions = {}) {
       ctxRef.current = ctx;
       const source = ctx.createMediaStreamSource(stream);
       const analyser = ctx.createAnalyser();
-      analyser.fftSize = 16384;
+      // Con ML usamos la ventana más larga disponible (~0.7 s a 44.1 kHz) para dar
+      // más contexto al modelo; con el motor estándar basta 16384.
+      analyser.fftSize = engineRef.current === 'ml' && modeRef.current === 'poly' ? 32768 : 16384;
       analyser.smoothingTimeConstant = 0;
       source.connect(analyser);
       analyserRef.current = analyser;

@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { Flame, Star, ArrowRight, Sliders, Ear, Dumbbell } from 'lucide-react';
+import { Flame, Star, ArrowRight, Sliders, Ear, Dumbbell, Music } from 'lucide-react';
 import { flatLessons, lessonKey, totalLessons } from '../data/curriculum';
 import { useProgressStore } from '../store/useProgressStore';
 
@@ -59,10 +59,11 @@ export default function Dashboard() {
       </div>
 
       {/* Accesos rápidos */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-4 gap-3">
+        <QuickLink to="/canciones" icon={<Music />} label="Canciones" />
         <QuickLink to="/practica" icon={<Dumbbell />} label="Práctica" />
         <QuickLink to="/oido" icon={<Ear />} label="Oído" />
-        <QuickLink to="/herramientas" icon={<Sliders />} label="Herramientas" />
+        <QuickLink to="/herramientas" icon={<Sliders />} label="Ajustes" />
       </div>
     </div>
   );

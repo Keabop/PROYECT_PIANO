@@ -12,6 +12,9 @@ interface MatcherArgs {
   enabled: boolean;
   midi: number | null; // mono
   activeNotes: ActiveNote[]; // poly
+  /** Contador de análisis del micrófono: garantiza que el matcher evalúe CADA lectura,
+   *  incluso si la nota detectada no cambia entre frames (nota sostenida). */
+  tick?: number;
 }
 
 export interface MatcherState {
@@ -27,7 +30,7 @@ export interface MatcherState {
 const STABLE_FRAMES = 2; // frames que una nota debe mantenerse para contar
 const CHORD_STABLE = 2; // lecturas poly estables para dar el acorde por bueno
 
-export function useNoteMatcher({ targets, chord, enabled, midi, activeNotes }: MatcherArgs) {
+export function useNoteMatcher({ targets, chord, enabled, midi, activeNotes, tick = 0 }: MatcherArgs) {
   const [state, setState] = useState<MatcherState>({
     index: 0,
     total: targets.length,
@@ -84,7 +87,9 @@ export function useNoteMatcher({ targets, chord, enabled, midi, activeNotes }: M
       stableRef.current = 0;
       setState((s) => (s.wrong ? s : { ...s, wrong: true }));
     }
-  }, [midi, enabled, chord, targets]);
+    // `tick` en las dependencias: re-evalúa en cada análisis del micrófono, no solo
+    // cuando cambia la nota (una nota sostenida produce el mismo `midi` muchos frames).
+  }, [midi, tick, enabled, chord, targets]);
 
   // ---- Modo POLY (acorde) ----
   useEffect(() => {
@@ -112,7 +117,7 @@ export function useNoteMatcher({ targets, chord, enabled, midi, activeNotes }: M
       chordStableRef.current = 0;
       setState((s) => ({ ...s, matchedPcs: res.matched, missingPcs: res.missing, wrong: res.extra.length > 0 }));
     }
-  }, [activeNotes, enabled, chord, targets]);
+  }, [activeNotes, tick, enabled, chord, targets]);
 
   return { ...state, reset };
 }

@@ -96,7 +96,8 @@ export default function Practice() {
 function FreePlay() {
   const a4 = useSettingsStore((s) => s.a4);
   const naming = useSettingsStore((s) => s.naming);
-  const mic = useMicrophone({ mode: 'poly', a4 });
+  const detectionEngine = useSettingsStore((s) => s.detectionEngine);
+  const mic = useMicrophone({ mode: 'poly', engine: detectionEngine, a4 });
   const detected = mic.activeNotes.map((n) => n.midi);
 
   return (
@@ -110,13 +111,22 @@ function FreePlay() {
         polifónica, funciona también con acordes).
       </p>
       <PianoKeyboard from={48} to={84} detected={detected} detectedOk />
-      <div className="min-h-[24px] text-sm">
+      <div className="min-h-[24px] text-sm" data-testid="freeplay-notes">
         {detected.length > 0 ? (
           <span className="text-piano-good font-medium">Escuchando: {detected.map((m) => midiToName(m, naming)).join('  ·  ')}</span>
         ) : (
-          <span className="text-piano-muted">{mic.status === 'active' ? 'Toca algo en tu piano…' : 'Micrófono apagado'}</span>
+          <span className="text-piano-muted">
+            {mic.status === 'active'
+              ? detectionEngine === 'ml' && mic.mlStatus !== 'ready'
+                ? 'Cargando motor ML (Basic Pitch)…'
+                : 'Toca algo en tu piano…'
+              : 'Micrófono apagado'}
+          </span>
         )}
       </div>
+      {detectionEngine === 'ml' && (
+        <span className="chip">🧠 Motor ML: {mic.mlStatus === 'ready' ? 'listo' : mic.mlStatus === 'error' ? 'error (usando estándar)' : 'cargando…'}</span>
+      )}
       <button className={mic.status === 'active' ? 'btn-ghost self-start' : 'btn-primary self-start'} onClick={() => (mic.status === 'active' ? mic.stop() : mic.start())}>
         {mic.status === 'active' ? 'Detener micrófono' : 'Activar micrófono'}
       </button>

@@ -9,9 +9,13 @@ export default function Tools() {
   const a4 = useSettingsStore((s) => s.a4);
   const naming = useSettingsStore((s) => s.naming);
   const theme = useSettingsStore((s) => s.theme);
+  const micSensitivity = useSettingsStore((s) => s.micSensitivity);
+  const detectionEngine = useSettingsStore((s) => s.detectionEngine);
   const setNaming = useSettingsStore((s) => s.setNaming);
   const setA4 = useSettingsStore((s) => s.setA4);
   const setTheme = useSettingsStore((s) => s.setTheme);
+  const setMicSensitivity = useSettingsStore((s) => s.setMicSensitivity);
+  const setDetectionEngine = useSettingsStore((s) => s.setDetectionEngine);
   const [labels, setLabels] = useState(true);
 
   return (
@@ -73,6 +77,51 @@ export default function Tools() {
           <button className="px-3 py-1 rounded-lg text-sm bg-white/5" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}>
             {theme === 'dark' ? '🌙 Oscuro' : '☀️ Claro'}
           </button>
+        </div>
+
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center justify-between">
+            <span className="text-sm">Motor de detección de acordes</span>
+            <div className="flex gap-2">
+              <button
+                data-testid="engine-standard"
+                className={`px-3 py-1 rounded-lg text-sm ${detectionEngine === 'standard' ? 'bg-piano-primary text-white' : 'bg-white/5'}`}
+                onClick={() => setDetectionEngine('standard')}
+              >
+                Estándar
+              </button>
+              <button
+                data-testid="engine-ml"
+                className={`px-3 py-1 rounded-lg text-sm ${detectionEngine === 'ml' ? 'bg-piano-primary text-white' : 'bg-white/5'}`}
+                onClick={() => setDetectionEngine('ml')}
+              >
+                🧠 ML (beta)
+              </button>
+            </div>
+          </div>
+          <p className="text-xs text-piano-muted">
+            Estándar responde al instante. ML (Basic Pitch, corre en tu navegador) es más preciso con pianos
+            reales y ambientes con ruido, a cambio de ~1 s de latencia. Todo se procesa en tu dispositivo.
+          </p>
+        </div>
+
+        <div className="flex flex-col gap-1">
+          <div className="flex items-center justify-between">
+            <span className="text-sm">Sensibilidad del micrófono</span>
+            <span className="text-xs text-piano-muted">{micSensitivity <= 0.33 ? 'Estricta' : micSensitivity >= 0.67 ? 'Permisiva' : 'Media'}</span>
+          </div>
+          <input
+            type="range"
+            min={0}
+            max={1}
+            step={0.05}
+            value={micSensitivity}
+            onChange={(e) => setMicSensitivity(Number(e.target.value))}
+            className="w-full accent-piano-primary"
+          />
+          <p className="text-xs text-piano-muted">
+            Si la app no reconoce tus notas, súbela; si detecta notas fantasma, bájala.
+          </p>
         </div>
       </div>
     </div>

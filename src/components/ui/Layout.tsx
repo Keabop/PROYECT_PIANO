@@ -1,12 +1,13 @@
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
-import { BookOpen, Dumbbell, Home, Sliders, Ear, Trophy } from 'lucide-react';
+import { BookOpen, Dumbbell, Home, Music, Sliders, Ear, Trophy } from 'lucide-react';
 
 const NAV = [
   { to: '/', label: 'Inicio', icon: Home },
   { to: '/curriculum', label: 'Lecciones', icon: BookOpen },
+  { to: '/canciones', label: 'Canciones', icon: Music },
   { to: '/practica', label: 'Práctica', icon: Dumbbell },
   { to: '/oido', label: 'Oído', icon: Ear },
-  { to: '/herramientas', label: 'Herramientas', icon: Sliders },
+  { to: '/herramientas', label: 'Ajustes', icon: Sliders },
   { to: '/progreso', label: 'Progreso', icon: Trophy },
 ];
 
