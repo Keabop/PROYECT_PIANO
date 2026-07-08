@@ -1,7 +1,9 @@
 import type { ReactNode } from 'react';
-import { Flame, RotateCcw, Star, Trophy } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { CheckCircle2, Flame, Lock, MapPin, RotateCcw, Star, Trophy } from 'lucide-react';
 import { ACHIEVEMENTS, useProgressStore } from '../store/useProgressStore';
 import { MODULES, lessonKey, totalLessons } from '../data/curriculum';
+import { evaluateJourney } from '../data/journey';
 
 export default function Progress() {
   const lessons = useProgressStore((s) => s.lessons);
@@ -13,6 +15,7 @@ export default function Progress() {
   const completed = Object.keys(lessons).length;
   const totalStars = Object.values(lessons).reduce((sum, r) => sum + r.stars, 0);
   const maxStars = totalLessons() * 3;
+  const journey = evaluateJourney(lessons);
 
   return (
     <div className="flex flex-col gap-6">
@@ -21,6 +24,64 @@ export default function Progress() {
           <Trophy /> Tu progreso
         </h1>
       </header>
+
+      {/* El Camino: de aprendiz a intermedio */}
+      <div className="card p-5">
+        <h2 className="font-semibold mb-1 flex items-center gap-2">
+          <MapPin size={18} className="text-piano-primary" /> El Camino: de aprendiz a intermedio
+        </h2>
+        <p className="text-sm text-piano-muted mb-4">
+          {journey.completed
+            ? '¡Camino completado! Eres oficialmente pianista de nivel intermedio. 🎉'
+            : `Estás en la fase ${journey.currentPhase} de 6.`}
+        </p>
+        <div className="flex flex-col gap-3">
+          {journey.phases.map(({ phase, done, missing, progress }) => {
+            const isCurrent = phase.num === journey.currentPhase && !journey.completed;
+            const locked = phase.num > journey.currentPhase;
+            return (
+              <div
+                key={phase.num}
+                className={`rounded-xl p-4 ${
+                  isCurrent ? 'bg-piano-primary/10 ring-1 ring-piano-primary/40' : 'bg-white/5'
+                } ${locked ? 'opacity-50' : ''}`}
+              >
+                <div className="flex items-center gap-3">
+                  {done ? (
+                    <CheckCircle2 size={20} className="text-piano-good shrink-0" />
+                  ) : locked ? (
+                    <Lock size={18} className="text-piano-muted shrink-0" />
+                  ) : (
+                    <span className="h-5 w-5 grid place-items-center rounded-full bg-piano-primary text-[11px] font-bold shrink-0">
+                      {phase.num}
+                    </span>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium">
+                      {phase.emoji} Fase {phase.num}: {phase.title}
+                    </p>
+                    <p className="text-xs text-piano-muted">{phase.description}</p>
+                  </div>
+                  <span className="text-xs text-piano-muted shrink-0">{Math.round(progress * 100)}%</span>
+                </div>
+                {isCurrent && missing.length > 0 && (
+                  <div className="mt-3 pl-8 flex flex-col gap-1">
+                    <p className="text-xs font-medium text-piano-muted uppercase tracking-wide">Te falta:</p>
+                    {missing.map((m, i) => (
+                      <p key={i} className="text-sm text-piano-text">• {m}</p>
+                    ))}
+                    <div className="flex gap-3 mt-1 text-xs">
+                      <Link to="/curriculum" className="underline text-piano-muted hover:text-piano-text">Lecciones</Link>
+                      <Link to="/canciones" className="underline text-piano-muted hover:text-piano-text">Canciones</Link>
+                      <Link to="/practica" className="underline text-piano-muted hover:text-piano-text">Drills</Link>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <Stat value={xp} label="XP total" icon={<Star className="text-piano-warn" />} />

@@ -1,22 +1,28 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Check, X } from 'lucide-react';
 import type { Exercise } from '../data/curriculum';
+import type { ExerciseResult } from './ExerciseRunner';
 
 interface QuizProps {
   exercise: Extract<Exercise, { kind: 'quiz' }>;
-  onComplete: () => void;
+  onComplete: (result: ExerciseResult) => void;
 }
 
 export default function QuizExercise({ exercise, onComplete }: QuizProps) {
   const [selected, setSelected] = useState<number | null>(null);
+  const wrongAttemptsRef = useRef(0);
   const answered = selected != null;
   const correct = selected === exercise.answer;
 
   function choose(i: number) {
     if (answered) return;
     setSelected(i);
-    if (i === exercise.answer) setTimeout(onComplete, 900);
+    if (i === exercise.answer) {
+      setTimeout(() => onComplete({ errors: wrongAttemptsRef.current }), 900);
+    } else {
+      wrongAttemptsRef.current += 1;
+    }
   }
 
   return (

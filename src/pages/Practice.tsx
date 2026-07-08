@@ -3,10 +3,11 @@ import { Music2, Piano } from 'lucide-react';
 import type { Exercise } from '../data/curriculum';
 import { buildScale } from '../theory/scales';
 import { buildChord } from '../theory/chords';
-import ExerciseRunner from '../practice/ExerciseRunner';
+import ExerciseRunner, { type ExerciseResult } from '../practice/ExerciseRunner';
 import PianoKeyboard from '../components/Piano/PianoKeyboard';
 import { useMicrophone } from '../audio/useMicrophone';
 import { midiToName } from '../audio/noteUtils';
+import { MASTERY_LABEL, masteryOf, useProgressStore } from '../store/useProgressStore';
 import { useSettingsStore } from '../store/useSettingsStore';
 
 interface Drill {
@@ -45,22 +46,40 @@ const DRILLS: { group: string; items: Drill[] }[] = [
 ];
 
 export default function Practice() {
-  const [active, setActive] = useState<Exercise | null>(null);
+  const [active, setActive] = useState<{ exercise: Exercise; drillId: string } | null>(null);
   const [key, setKey] = useState(0);
+  const lessons = useProgressStore((s) => s.lessons);
+  const recordPractice = useProgressStore((s) => s.recordPractice);
+
+  const activeRecord = active ? lessons[`drill/${active.drillId}`] : undefined;
+
+  function handleComplete(result: ExerciseResult) {
+    if (active) recordPractice(`drill/${active.drillId}`, result.errors, 8);
+    setKey((k) => k + 1);
+  }
 
   return (
     <div className="flex flex-col gap-6">
       <header>
         <h1 className="text-2xl font-bold">Práctica libre</h1>
-        <p className="text-piano-muted">Repasa escalas, acordes y arpegios, o toca libremente.</p>
+        <p className="text-piano-muted">
+          Técnica diaria: repite cada drill hasta la medalla — 🥉 una vez · 🥈 3 con una limpia · 🥇 3 limpias
+          seguidas.
+        </p>
       </header>
 
       {active ? (
         <div className="card p-5 flex flex-col gap-4">
-          <button className="text-sm text-piano-muted self-start hover:text-piano-text" onClick={() => setActive(null)}>
-            ← Elegir otro ejercicio
-          </button>
-          <ExerciseRunner key={key} exercise={active} onComplete={() => setKey((k) => k + 1)} />
+          <div className="flex items-center justify-between">
+            <button className="text-sm text-piano-muted hover:text-piano-text" onClick={() => setActive(null)}>
+              ← Elegir otro ejercicio
+            </button>
+            <span className="text-sm text-piano-muted">
+              {MASTERY_LABEL[masteryOf(activeRecord)]} · reps {activeRecord?.reps ?? 0} · limpias{' '}
+              {activeRecord?.cleanReps ?? 0} · racha {activeRecord?.streak ?? 0}
+            </span>
+          </div>
+          <ExerciseRunner key={key} exercise={active.exercise} onComplete={handleComplete} />
         </div>
       ) : (
         <>
@@ -70,18 +89,22 @@ export default function Practice() {
                 <Music2 size={16} /> {section.group}
               </h2>
               <div className="flex flex-wrap gap-2">
-                {section.items.map((d) => (
-                  <button
-                    key={d.id}
-                    className="btn-ghost"
-                    onClick={() => {
-                      setActive(d.make());
-                      setKey((k) => k + 1);
-                    }}
-                  >
-                    {d.label}
-                  </button>
-                ))}
+                {section.items.map((d) => {
+                  const m = masteryOf(lessons[`drill/${d.id}`]);
+                  return (
+                    <button
+                      key={d.id}
+                      className="btn-ghost"
+                      onClick={() => {
+                        setActive({ exercise: d.make(), drillId: d.id });
+                        setKey((k) => k + 1);
+                      }}
+                    >
+                      {m !== 'new' && <span>{MASTERY_LABEL[m]}</span>}
+                      {d.label}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           ))}

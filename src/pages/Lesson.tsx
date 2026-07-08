@@ -1,24 +1,26 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowLeft, ArrowRight, PartyPopper, Star } from 'lucide-react';
 import { flatLessons, getLesson, lessonKey } from '../data/curriculum';
 import LessonBlock from '../components/LessonBlock';
-import ExerciseRunner from '../practice/ExerciseRunner';
+import ExerciseRunner, { type ExerciseResult } from '../practice/ExerciseRunner';
 import { useProgressStore } from '../store/useProgressStore';
 
 export default function Lesson() {
   const { moduleId, lessonId } = useParams();
   const navigate = useNavigate();
-  const completeLesson = useProgressStore((s) => s.completeLesson);
+  const recordPractice = useProgressStore((s) => s.recordPractice);
 
   const found = moduleId && lessonId ? getLesson(moduleId, lessonId) : undefined;
   const [exIndex, setExIndex] = useState(0);
   const [finished, setFinished] = useState(false);
+  const errorsTotalRef = useRef(0);
 
   useEffect(() => {
     setExIndex(0);
     setFinished(false);
+    errorsTotalRef.current = 0;
   }, [moduleId, lessonId]);
 
   const next = useMemo(() => {
@@ -40,17 +42,19 @@ export default function Lesson() {
   const { module, lesson } = found;
   const exercises = lesson.exercises;
 
-  function handleExerciseComplete() {
+  function handleExerciseComplete(result: ExerciseResult) {
+    errorsTotalRef.current += result.errors;
     if (exIndex < exercises.length - 1) {
       setExIndex((i) => i + 1);
     } else {
-      completeLesson(lessonKey(module.id, lesson.id), 100);
+      recordPractice(lessonKey(module.id, lesson.id), errorsTotalRef.current, 20);
       setFinished(true);
     }
   }
 
   if (finished) {
-    return <Completion module={module} next={next} onNav={(to) => navigate(to)} />;
+    const earnedStars = Math.max(1, 3 - Math.min(2, Math.floor(errorsTotalRef.current / 3)));
+    return <Completion module={module} next={next} stars={earnedStars} errors={errorsTotalRef.current} onNav={(to) => navigate(to)} />;
   }
 
   return (
@@ -99,10 +103,14 @@ export default function Lesson() {
 function Completion({
   module,
   next,
+  stars,
+  errors,
   onNav,
 }: {
   module: { emoji: string };
   next?: { module: { id: string; title: string; emoji: string }; lesson: { id: string; title: string } };
+  stars: number;
+  errors: number;
   onNav: (to: string) => void;
 }) {
   return (
@@ -111,10 +119,13 @@ function Completion({
       <h1 className="text-2xl font-bold">¡Lección completada!</h1>
       <div className="flex gap-1">
         {[0, 1, 2].map((i) => (
-          <Star key={i} size={28} className="text-piano-warn fill-piano-warn" />
+          <Star key={i} size={28} className={i < stars ? 'text-piano-warn fill-piano-warn' : 'text-white/15'} />
         ))}
       </div>
-      <p className="text-piano-muted">+20 XP {module.emoji}</p>
+      <p className="text-piano-muted">
+        +20 XP {module.emoji}
+        {errors === 0 ? ' · ¡Sin errores!' : ` · ${errors} error${errors === 1 ? '' : 'es'}`}
+      </p>
       <div className="flex flex-col sm:flex-row gap-3 mt-2">
         {next ? (
           <button className="btn-primary" onClick={() => onNav(`/leccion/${next.module.id}/${next.lesson.id}`)}>

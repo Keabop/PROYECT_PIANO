@@ -128,11 +128,17 @@ await scenario('Canción: frase de la Oda a la Alegría completada nota a nota',
     // 15 notas ≈ 15 s por vuelta del WAV; margen para entrar a mitad de loop.
     await page.getByText('¡Correcto!').waitFor({ timeout: 90000 });
     await page.screenshot({ path: join(SHOTS, '2-cancion-oda.png') });
-    // Evidencia extra: el progreso queda guardado (onComplete corre ~700 ms después).
+    // Evidencia extra: el progreso queda guardado (onComplete corre ~700 ms después)
+    // y el sistema de maestría registró la repetición (reps: 1 → medalla de bronce).
     await page.waitForFunction(
-      () => (localStorage.getItem('pianoapp-progress') ?? '').includes('cancion/oda-alegria/0'),
+      () => {
+        const raw = localStorage.getItem('pianoapp-progress') ?? '';
+        return raw.includes('cancion/oda-alegria/0') && raw.includes('"reps":1');
+      },
       { timeout: 8000 }
     );
+    // El panel post-frase ofrece repetir (camino a la medalla) en vez de saltar sola.
+    await page.getByRole('button', { name: /Repetir/ }).waitFor({ timeout: 5000 });
   } finally {
     await browser.close();
   }
@@ -196,7 +202,7 @@ await scenario('Botón «Escuchar»: el audio se desbloquea y reproduce sin erro
       { timeout: 10000 }
     );
     // Reproduce de nuevo (contexto ya activo) y verifica que no hay errores JS.
-    await page.getByRole('button', { name: /Canción completa/ }).click();
+    await page.getByRole('button', { name: /Escuchar todo/ }).click();
     await page.waitForTimeout(1500);
     if (errors.length) throw new Error('Errores al reproducir: ' + errors[0]);
   } finally {

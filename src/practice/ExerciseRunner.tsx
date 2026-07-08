@@ -11,9 +11,14 @@ import PianoKeyboard from '../components/Piano/PianoKeyboard';
 import Staff from '../components/Staff/Staff';
 import QuizExercise from './QuizExercise';
 
+export interface ExerciseResult {
+  /** Errores cometidos durante la ejecución (notas incorrectas / intentos fallidos). */
+  errors: number;
+}
+
 interface ExerciseRunnerProps {
   exercise: Exercise;
-  onComplete: () => void;
+  onComplete: (result: ExerciseResult) => void;
 }
 
 export default function ExerciseRunner({ exercise, onComplete }: ExerciseRunnerProps) {
@@ -23,7 +28,13 @@ export default function ExerciseRunner({ exercise, onComplete }: ExerciseRunnerP
   return <PlayExercise exercise={exercise} onComplete={onComplete} />;
 }
 
-function PlayExercise({ exercise, onComplete }: { exercise: Exclude<Exercise, { kind: 'quiz' }>; onComplete: () => void }) {
+function PlayExercise({
+  exercise,
+  onComplete,
+}: {
+  exercise: Exclude<Exercise, { kind: 'quiz' }>;
+  onComplete: (result: ExerciseResult) => void;
+}) {
   const a4 = useSettingsStore((s) => s.a4);
   const detectionEngine = useSettingsStore((s) => s.detectionEngine);
   const chord = exercise.kind === 'playChord';
@@ -43,6 +54,16 @@ function PlayExercise({ exercise, onComplete }: { exercise: Exclude<Exercise, { 
   const [manualChord, setManualChord] = useState<Set<number>>(new Set());
   const [wrongFlash, setWrongFlash] = useState(false);
 
+  // Errores de ESTA ejecución (persisten aunque se pulse Reiniciar: reintentar
+  // no borra los fallos del intento — así las repeticiones "limpias" son reales).
+  const errorsRef = useRef(0);
+  const prevWrongRef = useRef(false);
+  useEffect(() => {
+    // Flanco de subida de matcher.wrong = una nota incorrecta detectada por el micro.
+    if (matcher.wrong && !prevWrongRef.current) errorsRef.current += 1;
+    prevWrongRef.current = matcher.wrong;
+  }, [matcher.wrong]);
+
   const index = micActive ? matcher.index : manualIndex;
   const manualChordDone = chord && targets.every((t) => manualChord.has(pitchClass(t)));
   const done = micActive ? matcher.done : chord ? manualChordDone : manualIndex >= targets.length;
@@ -51,7 +72,7 @@ function PlayExercise({ exercise, onComplete }: { exercise: Exclude<Exercise, { 
   useEffect(() => {
     if (done && !completedRef.current) {
       completedRef.current = true;
-      const t = setTimeout(onComplete, 700);
+      const t = setTimeout(() => onComplete({ errors: errorsRef.current }), 700);
       return () => clearTimeout(t);
     }
   }, [done, onComplete]);
@@ -87,6 +108,7 @@ function PlayExercise({ exercise, onComplete }: { exercise: Exclude<Exercise, { 
     } else if (index < targets.length && pitchClass(midi) === pitchClass(targets[index])) {
       setManualIndex((i) => i + 1);
     } else {
+      errorsRef.current += 1;
       setWrongFlash(true);
       setTimeout(() => setWrongFlash(false), 250);
     }
