@@ -2,10 +2,10 @@ import { useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowLeft, CheckCircle2, Music, PartyPopper, Volume2 } from 'lucide-react';
-import { LIBRARY, phraseKey, songByIdLib, type LibrarySong } from '../data/library';
+import { LIBRARY, phraseDurationsSec, phraseKey, songByIdLib, type LibrarySong } from '../data/library';
 import type { Exercise } from '../data/curriculum';
 import ExerciseRunner from '../practice/ExerciseRunner';
-import { playSequence } from '../audio/synth';
+import { playTimedSequence } from '../audio/synth';
 import { useProgressStore } from '../store/useProgressStore';
 import { useSettingsStore } from '../store/useSettingsStore';
 
@@ -83,6 +83,8 @@ export function SongDetail() {
       id: `song-${song.id}-${phraseIdx}`,
       prompt: `${phrase.name}: toca las notas en orden. Ve a tu ritmo.`,
       targets: phrase.notes,
+      durations: phrase.durations,
+      bpm: song.bpm,
       showStaff: true,
     };
   }, [song, phraseIdx]);
@@ -98,7 +100,23 @@ export function SongDetail() {
 
   const doneCount = song.phrases.filter((_, i) => lessons[phraseKey(song.id, i)]).length;
   const songComplete = doneCount === song.phrases.length;
-  const gap = Math.max(0.28, 60 / song.bpm / 2);
+
+  function listenPhrase(i: number) {
+    playTimedSequence(song!.phrases[i].notes, phraseDurationsSec(song!.phrases[i], song!.bpm), a4);
+  }
+
+  function listenWholeSong() {
+    const notes: number[] = [];
+    const durs: number[] = [];
+    const breath = 60 / song!.bpm; // un tiempo de respiro entre frases
+    song!.phrases.forEach((p, pi) => {
+      const d = phraseDurationsSec(p, song!.bpm);
+      notes.push(...p.notes);
+      durs.push(...d);
+      if (pi < song!.phrases.length - 1) durs[durs.length - 1] += breath;
+    });
+    playTimedSequence(notes, durs, a4);
+  }
 
   function handlePhraseComplete() {
     completeLesson(phraseKey(song!.id, phraseIdx), 100, 10);
@@ -158,13 +176,10 @@ export function SongDetail() {
       </div>
 
       <div className="flex gap-2">
-        <button className="btn-ghost" onClick={() => playSequence(song.phrases[phraseIdx].notes, gap, gap * 0.9, a4)}>
+        <button className="btn-ghost" onClick={() => listenPhrase(phraseIdx)}>
           <Volume2 size={18} /> Escuchar frase
         </button>
-        <button
-          className="btn-ghost"
-          onClick={() => playSequence(song.phrases.flatMap((p) => p.notes), gap, gap * 0.9, a4)}
-        >
+        <button className="btn-ghost" onClick={listenWholeSong}>
           <Volume2 size={18} /> Canción completa
         </button>
       </div>

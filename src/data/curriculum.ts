@@ -19,7 +19,17 @@ export type Block =
 
 export type Exercise =
   | { kind: 'playNote'; id: string; prompt: string; target: number }
-  | { kind: 'playSequence'; id: string; prompt: string; targets: number[]; showStaff?: boolean; clef?: Clef }
+  | {
+      kind: 'playSequence';
+      id: string;
+      prompt: string;
+      targets: number[];
+      showStaff?: boolean;
+      clef?: Clef;
+      /** Ritmo opcional para "Escuchar": duración de cada nota en tiempos + tempo. */
+      durations?: number[];
+      bpm?: number;
+    }
   | { kind: 'playChord'; id: string; prompt: string; targets: number[] }
   | { kind: 'quiz'; id: string; prompt: string; options: string[]; answer: number; explain?: string };
 

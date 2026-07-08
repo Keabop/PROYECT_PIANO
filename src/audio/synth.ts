@@ -149,6 +149,27 @@ export async function playSequence(midis: number[], gap = 0.5, duration = 0.45, 
   });
 }
 
+/**
+ * Toca una secuencia con RITMO: cada nota tiene su propia duración en segundos.
+ * La siguiente nota empieza cuando termina la anterior (legato natural del sampler).
+ * Un nuevo playTimedSequence cancela la secuencia anterior.
+ */
+export async function playTimedSequence(midis: number[], durationsSec: number[], a4 = 440): Promise<void> {
+  await ensureAudio();
+  stopAll();
+  let t = 0;
+  midis.forEach((m, i) => {
+    const dur = durationsSec[i] ?? 0.5;
+    const timer = setTimeout(() => {
+      if (Tone.getContext().state === 'running') {
+        instrument().triggerAttackRelease(midiToFreq(m, a4), dur * 0.95, Tone.now(), humanVelocity());
+      }
+    }, t * 1000);
+    pendingTimers.push(timer);
+    t += dur;
+  });
+}
+
 /** Un clic de metrónomo. `accent` = primer tiempo del compás. */
 export async function metronomeClick(accent = false): Promise<void> {
   await ensureAudio();

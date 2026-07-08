@@ -5,7 +5,7 @@ import type { Exercise } from '../data/curriculum';
 import { useMicrophone } from '../audio/useMicrophone';
 import { useNoteMatcher } from './useNoteMatcher';
 import { pitchClass } from '../audio/noteUtils';
-import { playChord, playMidi, playSequence } from '../audio/synth';
+import { playChord, playMidi, playSequence, playTimedSequence } from '../audio/synth';
 import { useSettingsStore } from '../store/useSettingsStore';
 import PianoKeyboard from '../components/Piano/PianoKeyboard';
 import Staff from '../components/Staff/Staff';
@@ -93,9 +93,17 @@ function PlayExercise({ exercise, onComplete }: { exercise: Exclude<Exercise, { 
   }
 
   function listen() {
-    if (chord) playChord(targets, 1.4, a4);
-    else if (targets.length === 1) playMidi(targets[0], 0.7, a4);
-    else playSequence(targets, 0.45, 0.4, a4);
+    if (chord) {
+      playChord(targets, 1.4, a4);
+    } else if (targets.length === 1) {
+      playMidi(targets[0], 0.7, a4);
+    } else if (exercise.kind === 'playSequence' && exercise.durations && exercise.bpm) {
+      // Ritmo real de la pieza (canciones): cada nota con su duración y tempo.
+      const beat = 60 / exercise.bpm;
+      playTimedSequence(targets, exercise.durations.map((d) => d * beat), a4);
+    } else {
+      playSequence(targets, 0.45, 0.4, a4);
+    }
   }
 
   return (

@@ -1,12 +1,18 @@
 // Biblioteca de canciones: piezas divididas en FRASES cortas (así se estudian, como con
 // un profesor). Melodías simplificadas para mano derecha, como números MIDI.
 //
+// RITMO: cada frase puede llevar `durations` — la duración de cada nota EN TIEMPOS
+// (1 = negra, 0.5 = corchea, 2 = blanca, 1.5 = negra con puntillo...). El tempo lo da
+// `bpm` (negras por minuto). Sin `durations`, todas las notas duran 1 tiempo.
+//
 // Repertorio: piezas de dominio público completas + dos temas de película como
 // FRAGMENTOS BREVES SIMPLIFICADOS (transcripción libre propia, etiquetados como tales).
 
 export interface SongPhrase {
   name: string;
   notes: number[];
+  /** Duración de cada nota en tiempos; debe tener la misma longitud que notes. */
+  durations?: number[];
 }
 
 export interface LibrarySong {
@@ -24,8 +30,7 @@ export interface LibrarySong {
 const C4 = 60, D4 = 62, E4 = 64, F4 = 65, G4 = 67, A4 = 69, B4 = 71;
 const C5 = 72, D5 = 74, E5 = 76, F5 = 77, G5 = 79, A5 = 81;
 const Cs5 = 73, Ds5 = 75, Fs5 = 78, Gs4 = 68, Gs3 = 56, Cs4 = 61, Fs4 = 66;
-const A3 = 57, G3 = 55, B3 = 59;
-void B3;
+const A3 = 57, G3 = 55;
 
 export const LIBRARY: LibrarySong[] = [
   {
@@ -34,12 +39,28 @@ export const LIBRARY: LibrarySong[] = [
     origin: 'Beethoven — 9.ª sinfonía',
     emoji: '🎼',
     level: 'fácil',
-    bpm: 100,
+    bpm: 110,
     phrases: [
-      { name: 'Frase 1', notes: [E4, E4, F4, G4, G4, F4, E4, D4, C4, C4, D4, E4, E4, D4, D4] },
-      { name: 'Frase 2', notes: [E4, E4, F4, G4, G4, F4, E4, D4, C4, C4, D4, E4, D4, C4, C4] },
-      { name: 'Puente', notes: [D4, D4, E4, C4, D4, E4, F4, E4, C4, D4, E4, F4, E4, D4, C4, D4, G3] },
-      { name: 'Frase final', notes: [E4, E4, F4, G4, G4, F4, E4, D4, C4, C4, D4, E4, D4, C4, C4] },
+      {
+        name: 'Frase 1',
+        notes: [E4, E4, F4, G4, G4, F4, E4, D4, C4, C4, D4, E4, E4, D4, D4],
+        durations: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1.5, 0.5, 2],
+      },
+      {
+        name: 'Frase 2',
+        notes: [E4, E4, F4, G4, G4, F4, E4, D4, C4, C4, D4, E4, D4, C4, C4],
+        durations: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1.5, 0.5, 2],
+      },
+      {
+        name: 'Puente',
+        notes: [D4, D4, E4, C4, D4, E4, F4, E4, C4, D4, E4, F4, E4, D4, C4, D4, G3],
+        durations: [1, 1, 1, 1, 1, 0.5, 0.5, 1, 1, 1, 0.5, 0.5, 1, 1, 1, 1, 2],
+      },
+      {
+        name: 'Frase final',
+        notes: [E4, E4, F4, G4, G4, F4, E4, D4, C4, C4, D4, E4, D4, C4, C4],
+        durations: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1.5, 0.5, 2],
+      },
     ],
   },
   {
@@ -48,12 +69,16 @@ export const LIBRARY: LibrarySong[] = [
     origin: 'Tradicional',
     emoji: '⭐',
     level: 'fácil',
-    bpm: 90,
+    bpm: 100,
     phrases: [
-      { name: 'Frase 1', notes: [C4, C4, G4, G4, A4, A4, G4] },
-      { name: 'Frase 2', notes: [F4, F4, E4, E4, D4, D4, C4] },
-      { name: 'Frase 3', notes: [G4, G4, F4, F4, E4, E4, D4] },
-      { name: 'Frase 4', notes: [C4, C4, G4, G4, A4, A4, G4, F4, F4, E4, E4, D4, D4, C4] },
+      { name: 'Frase 1', notes: [C4, C4, G4, G4, A4, A4, G4], durations: [1, 1, 1, 1, 1, 1, 2] },
+      { name: 'Frase 2', notes: [F4, F4, E4, E4, D4, D4, C4], durations: [1, 1, 1, 1, 1, 1, 2] },
+      { name: 'Frase 3', notes: [G4, G4, F4, F4, E4, E4, D4], durations: [1, 1, 1, 1, 1, 1, 2] },
+      {
+        name: 'Frase 4',
+        notes: [C4, C4, G4, G4, A4, A4, G4, F4, F4, E4, E4, D4, D4, C4],
+        durations: [1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 2],
+      },
     ],
   },
   {
@@ -62,12 +87,12 @@ export const LIBRARY: LibrarySong[] = [
     origin: 'Tradicional',
     emoji: '🎂',
     level: 'fácil',
-    bpm: 110,
+    bpm: 125,
     phrases: [
-      { name: 'Frase 1', notes: [G4, G4, A4, G4, C5, B4] },
-      { name: 'Frase 2', notes: [G4, G4, A4, G4, D5, C5] },
-      { name: 'Frase 3', notes: [G4, G4, G5, E5, C5, B4, A4] },
-      { name: 'Frase 4', notes: [F5, F5, E5, C5, D5, C5] },
+      { name: 'Frase 1', notes: [G4, G4, A4, G4, C5, B4], durations: [0.75, 0.25, 1, 1, 1, 2] },
+      { name: 'Frase 2', notes: [G4, G4, A4, G4, D5, C5], durations: [0.75, 0.25, 1, 1, 1, 2] },
+      { name: 'Frase 3', notes: [G4, G4, G5, E5, C5, B4, A4], durations: [0.75, 0.25, 1, 1, 1, 1, 2] },
+      { name: 'Frase 4', notes: [F5, F5, E5, C5, D5, C5], durations: [0.75, 0.25, 1, 1, 1, 2] },
     ],
   },
   {
@@ -76,10 +101,18 @@ export const LIBRARY: LibrarySong[] = [
     origin: 'J. Pierpont — Tradicional',
     emoji: '🔔',
     level: 'fácil',
-    bpm: 120,
+    bpm: 130,
     phrases: [
-      { name: 'Estribillo 1', notes: [E4, E4, E4, E4, E4, E4, E4, G4, C4, D4, E4] },
-      { name: 'Estribillo 2', notes: [F4, F4, F4, F4, F4, E4, E4, E4, E4, D4, D4, E4, D4, G4] },
+      {
+        name: 'Estribillo 1',
+        notes: [E4, E4, E4, E4, E4, E4, E4, G4, C4, D4, E4],
+        durations: [1, 1, 2, 1, 1, 2, 1, 1, 1.5, 0.5, 4],
+      },
+      {
+        name: 'Estribillo 2',
+        notes: [F4, F4, F4, F4, F4, E4, E4, E4, E4, D4, D4, E4, D4, G4],
+        durations: [1, 1, 1.5, 0.5, 1, 1, 1, 0.5, 0.5, 1, 1, 1, 2, 2],
+      },
     ],
   },
   {
@@ -88,12 +121,20 @@ export const LIBRARY: LibrarySong[] = [
     origin: 'Himno tradicional',
     emoji: '🕊️',
     level: 'fácil',
-    bpm: 80,
+    bpm: 90,
     phrases: [
-      { name: 'Frase 1', notes: [G4, C5, E5, C5, E5, D5, C5, A4, G4] },
-      { name: 'Frase 2', notes: [G4, C5, E5, C5, E5, D5, G5] },
-      { name: 'Frase 3', notes: [E5, G5, E5, C5, G4, A4, C5, C5, A4, G4] },
-      { name: 'Frase 4', notes: [G4, C5, E5, C5, E5, D5, C5] },
+      {
+        name: 'Frase 1',
+        notes: [G4, C5, E5, C5, E5, D5, C5, A4, G4],
+        durations: [1, 2, 0.5, 0.5, 2, 1, 2, 1, 3],
+      },
+      { name: 'Frase 2', notes: [G4, C5, E5, C5, E5, D5, G5], durations: [1, 2, 0.5, 0.5, 2, 1, 3] },
+      {
+        name: 'Frase 3',
+        notes: [E5, G5, E5, C5, G4, A4, C5, C5, A4, G4],
+        durations: [1, 1.5, 0.5, 1, 2, 1, 1, 0.5, 0.5, 3],
+      },
+      { name: 'Frase 4', notes: [G4, C5, E5, C5, E5, D5, C5], durations: [1, 2, 0.5, 0.5, 2, 1, 3] },
     ],
   },
   {
@@ -102,11 +143,19 @@ export const LIBRARY: LibrarySong[] = [
     origin: 'Tradicional inglesa',
     emoji: '🍃',
     level: 'media',
-    bpm: 95,
+    bpm: 100,
     phrases: [
-      { name: 'Frase 1', notes: [A4, C5, D5, E5, F5, E5, D5, B4, G4, A4, B4, C5] },
-      { name: 'Frase 2', notes: [A4, A4, Gs4, A4, B4, Gs4, E4] },
-      { name: 'Frase 3', notes: [A4, C5, D5, E5, F5, E5, D5, B4, G4, A4, B4, C5, B4, A4, Gs4, A4] },
+      {
+        name: 'Frase 1',
+        notes: [A4, C5, D5, E5, F5, E5, D5, B4, G4, A4, B4, C5],
+        durations: [1, 2, 1, 1.5, 0.5, 1, 2, 1, 1.5, 0.5, 1, 2],
+      },
+      { name: 'Frase 2', notes: [A4, A4, Gs4, A4, B4, Gs4, E4], durations: [1, 1.5, 0.5, 1, 2, 1, 3] },
+      {
+        name: 'Frase 3',
+        notes: [A4, C5, D5, E5, F5, E5, D5, B4, G4, A4, B4, C5, B4, A4, Gs4, A4],
+        durations: [1, 2, 1, 1.5, 0.5, 1, 2, 1, 1.5, 0.5, 1, 2, 1, 1, 1.5, 3],
+      },
     ],
   },
   {
@@ -115,12 +164,20 @@ export const LIBRARY: LibrarySong[] = [
     origin: 'Beethoven',
     emoji: '🌸',
     level: 'media',
-    bpm: 75,
+    bpm: 80,
     phrases: [
-      { name: 'Motivo', notes: [E5, Ds5, E5, Ds5, E5, B4, D5, C5, A4] },
-      { name: 'Respuesta 1', notes: [C4, E4, A4, B4] },
-      { name: 'Respuesta 2', notes: [E4, Gs4, B4, C5] },
-      { name: 'Motivo completo', notes: [E4, E5, Ds5, E5, Ds5, E5, B4, D5, C5, A4] },
+      {
+        name: 'Motivo',
+        notes: [E5, Ds5, E5, Ds5, E5, B4, D5, C5, A4],
+        durations: [0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 2],
+      },
+      { name: 'Respuesta 1', notes: [C4, E4, A4, B4], durations: [0.5, 0.5, 0.5, 2] },
+      { name: 'Respuesta 2', notes: [E4, Gs4, B4, C5], durations: [0.5, 0.5, 0.5, 2] },
+      {
+        name: 'Motivo completo',
+        notes: [E4, E5, Ds5, E5, Ds5, E5, B4, D5, C5, A4],
+        durations: [0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 2],
+      },
     ],
   },
   {
@@ -129,10 +186,10 @@ export const LIBRARY: LibrarySong[] = [
     origin: 'Pachelbel',
     emoji: '🎻',
     level: 'media',
-    bpm: 70,
+    bpm: 50,
     phrases: [
-      { name: 'Tema 1', notes: [Fs5, E5, D5, Cs5, B4, A4, B4, Cs5] },
-      { name: 'Tema 2', notes: [D5, Cs5, B4, A4, G4, Fs4, G4, E4] },
+      { name: 'Tema 1', notes: [Fs5, E5, D5, Cs5, B4, A4, B4, Cs5], durations: [1, 1, 1, 1, 1, 1, 1, 1] },
+      { name: 'Tema 2', notes: [D5, Cs5, B4, A4, G4, Fs4, G4, E4], durations: [1, 1, 1, 1, 1, 1, 1, 1] },
     ],
   },
   {
@@ -143,8 +200,16 @@ export const LIBRARY: LibrarySong[] = [
     level: 'media',
     bpm: 60,
     phrases: [
-      { name: 'Arpegio 1 (Do#m)', notes: [Gs3, Cs4, E4, Gs3, Cs4, E4, Gs3, Cs4, E4] },
-      { name: 'Arpegio 2 (La)', notes: [A3, Cs4, E4, A3, Cs4, E4, A3, D4, Fs4] },
+      {
+        name: 'Arpegio 1 (Do#m)',
+        notes: [Gs3, Cs4, E4, Gs3, Cs4, E4, Gs3, Cs4, E4],
+        durations: [0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5],
+      },
+      {
+        name: 'Arpegio 2 (La)',
+        notes: [A3, Cs4, E4, A3, Cs4, E4, A3, D4, Fs4],
+        durations: [0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5],
+      },
     ],
   },
   {
@@ -153,10 +218,18 @@ export const LIBRARY: LibrarySong[] = [
     origin: 'Erik Satie',
     emoji: '🌫️',
     level: 'difícil',
-    bpm: 65,
+    bpm: 70,
     phrases: [
-      { name: 'Melodía A', notes: [Fs5, A5, G5, Fs5, Cs5, B4, Cs5, D5, A4] },
-      { name: 'Melodía B', notes: [Fs5, A5, G5, Fs5, Cs5, B4, Cs5, D5, A4, Cs5, D5, Cs5, B4] },
+      {
+        name: 'Melodía A',
+        notes: [Fs5, A5, G5, Fs5, Cs5, B4, Cs5, D5, A4],
+        durations: [2, 1, 1, 1, 1, 1, 1, 1, 4],
+      },
+      {
+        name: 'Melodía B',
+        notes: [Fs5, A5, G5, Fs5, Cs5, B4, Cs5, D5, A4, Cs5, D5, Cs5, B4],
+        durations: [2, 1, 1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 4],
+      },
     ],
   },
   {
@@ -165,12 +238,24 @@ export const LIBRARY: LibrarySong[] = [
     origin: 'Hans Zimmer — fragmento simplificado',
     emoji: '🚀',
     level: 'media',
-    bpm: 72,
+    bpm: 60,
     isExcerpt: true,
     phrases: [
-      { name: 'Motivo 1', notes: [A4, E5, A4, E5, B4, E5, B4, E5] },
-      { name: 'Motivo 2', notes: [C5, E5, C5, E5, B4, E5, B4, E5] },
-      { name: 'Motivo completo', notes: [A4, E5, B4, E5, C5, E5, B4, E5, A4, E5] },
+      {
+        name: 'Motivo 1',
+        notes: [A4, E5, A4, E5, B4, E5, B4, E5],
+        durations: [0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5],
+      },
+      {
+        name: 'Motivo 2',
+        notes: [C5, E5, C5, E5, B4, E5, B4, E5],
+        durations: [0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5],
+      },
+      {
+        name: 'Motivo completo',
+        notes: [A4, E5, B4, E5, C5, E5, B4, E5, A4, E5],
+        durations: [0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 1.5],
+      },
     ],
   },
   {
@@ -182,9 +267,17 @@ export const LIBRARY: LibrarySong[] = [
     bpm: 90,
     isExcerpt: true,
     phrases: [
-      { name: '"City of stars…"', notes: [E4, C5, B4, A4] },
-      { name: '"…are you shining just for me?"', notes: [A4, B4, C5, D5, B4, Gs4, A4] },
-      { name: 'Frase completa', notes: [E4, C5, B4, A4, A4, B4, C5, D5, B4, Gs4, A4] },
+      { name: '"City of stars…"', notes: [E4, C5, B4, A4], durations: [1, 1, 1, 3] },
+      {
+        name: '"…are you shining just for me?"',
+        notes: [A4, B4, C5, D5, B4, Gs4, A4],
+        durations: [0.5, 0.5, 1, 1, 1, 1, 3],
+      },
+      {
+        name: 'Frase completa',
+        notes: [E4, C5, B4, A4, A4, B4, C5, D5, B4, Gs4, A4],
+        durations: [1, 1, 1, 2, 0.5, 0.5, 1, 1, 1, 1, 3],
+      },
     ],
   },
   {
@@ -196,8 +289,12 @@ export const LIBRARY: LibrarySong[] = [
     bpm: 66,
     isExcerpt: true,
     phrases: [
-      { name: 'Apertura', notes: [C4, G4, C5, E5, D5, C5, G4] },
-      { name: 'Respuesta', notes: [C4, A4, C5, F5, E5, D5, A4, G4] },
+      { name: 'Apertura', notes: [C4, G4, C5, E5, D5, C5, G4], durations: [1, 1, 1, 2, 1, 1, 3] },
+      {
+        name: 'Respuesta',
+        notes: [C4, A4, C5, F5, E5, D5, A4, G4],
+        durations: [1, 1, 1, 2, 1, 1, 1, 3],
+      },
     ],
   },
 ];
@@ -209,4 +306,10 @@ export function songByIdLib(id: string): LibrarySong | undefined {
 /** Clave de progreso para una frase de canción. */
 export function phraseKey(songId: string, phraseIdx: number): string {
   return `cancion/${songId}/${phraseIdx}`;
+}
+
+/** Duraciones de una frase en SEGUNDOS según el tempo de la canción (1 tiempo por defecto). */
+export function phraseDurationsSec(phrase: SongPhrase, bpm: number): number[] {
+  const beat = 60 / bpm;
+  return phrase.notes.map((_, i) => (phrase.durations?.[i] ?? 1) * beat);
 }
