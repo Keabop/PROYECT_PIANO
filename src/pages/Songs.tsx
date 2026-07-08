@@ -1,14 +1,36 @@
-import { useMemo, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { useMemo, useRef, useState } from 'react';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, ArrowRight, CheckCircle2, Lock, Music, PartyPopper, RotateCcw, Trophy, Volume2 } from 'lucide-react';
-import { CATEGORIES, LIBRARY, phraseDurationsSec, phraseKey, songByIdLib, type LibrarySong } from '../data/library';
+import {
+  ArrowLeft,
+  ArrowRight,
+  CheckCircle2,
+  FileUp,
+  Lock,
+  Music,
+  PartyPopper,
+  RotateCcw,
+  Trash2,
+  Trophy,
+  Volume2,
+} from 'lucide-react';
+import {
+  CATEGORIES,
+  LIBRARY,
+  phraseDurationsBeats,
+  phraseDurationsSec,
+  phraseKey,
+  phraseOffsetsBeats,
+  type LibrarySong,
+} from '../data/library';
 import type { Exercise } from '../data/curriculum';
 import ExerciseRunner, { type ExerciseResult } from '../practice/ExerciseRunner';
+import FlowRunner, { type FlowMode } from '../practice/FlowRunner';
 import { playTimedSequence } from '../audio/synth';
 import { MASTERY_LABEL, MASTERY_RANK, masteryOf, useProgressStore } from '../store/useProgressStore';
-import { isSongDominated, songMastery } from '../data/journey';
+import { isSongDominatedSong, songMasteryOf } from '../data/journey';
 import { useSettingsStore } from '../store/useSettingsStore';
+import { useUserSongsStore } from '../store/useUserSongsStore';
 
 const LEVEL_COLOR: Record<LibrarySong['level'], string> = {
   fácil: 'text-piano-good',
@@ -17,24 +39,82 @@ const LEVEL_COLOR: Record<LibrarySong['level'], string> = {
 };
 
 const FULL = 'full';
+type PracticeMode = 'step' | FlowMode;
 
 export function SongList() {
   const lessons = useProgressStore((s) => s.lessons);
+  const userSongs = useUserSongsStore((s) => s.songs);
+  const addSong = useUserSongsStore((s) => s.addSong);
+  const navigate = useNavigate();
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [importError, setImportError] = useState<string | null>(null);
+  const [importing, setImporting] = useState(false);
+
+  const allSongs = useMemo(() => [...LIBRARY, ...userSongs], [userSongs]);
+
+  async function handleFile(file: File) {
+    setImporting(true);
+    setImportError(null);
+    try {
+      const buffer = await file.arrayBuffer();
+      const existingIds = allSongs.map((s) => s.id);
+      const name = file.name.toLowerCase();
+      let song: LibrarySong;
+      if (name.endsWith('.mid') || name.endsWith('.midi')) {
+        const { parseMidiFile } = await import('../import/midiImport');
+        song = parseMidiFile(buffer, file.name, existingIds);
+      } else if (name.endsWith('.xml') || name.endsWith('.musicxml') || name.endsWith('.mxl')) {
+        const { parseMusicXmlFile } = await import('../import/musicXmlImport');
+        song = await parseMusicXmlFile(buffer, file.name, existingIds);
+      } else {
+        throw new Error('Formato no soportado. Usa .mid, .midi, .musicxml, .xml o .mxl');
+      }
+      if (song.phrases.length === 0) throw new Error('No se encontraron notas en la partitura.');
+      addSong(song);
+      navigate(`/canciones/${song.id}`);
+    } catch (err) {
+      setImportError(err instanceof Error ? err.message : 'No se pudo leer el archivo.');
+    } finally {
+      setImporting(false);
+      if (fileRef.current) fileRef.current.value = '';
+    }
+  }
 
   return (
     <div className="flex flex-col gap-6">
-      <header>
-        <h1 className="text-2xl font-bold flex items-center gap-2">
-          <Music /> Canciones
-        </h1>
-        <p className="text-piano-muted">
-          Aprende por frases y repite hasta dominarlas: 🥉 una vez · 🥈 3 veces con una limpia · 🥇 3 limpias
-          seguidas.
-        </p>
+      <header className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold flex items-center gap-2">
+            <Music /> Canciones
+          </h1>
+          <p className="text-piano-muted">
+            Aprende por frases y repite hasta dominarlas: 🥉 una vez · 🥈 3 veces con una limpia · 🥇 3 limpias
+            seguidas.
+          </p>
+        </div>
+        <div className="flex flex-col items-end gap-1">
+          <button className="btn-primary" onClick={() => fileRef.current?.click()} disabled={importing}>
+            <FileUp size={18} /> {importing ? 'Importando…' : 'Importar partitura'}
+          </button>
+          <span className="text-[11px] text-piano-muted">.mid · .midi · .musicxml · .xml · .mxl</span>
+          <input
+            ref={fileRef}
+            type="file"
+            accept=".mid,.midi,.xml,.musicxml,.mxl"
+            className="hidden"
+            onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])}
+          />
+        </div>
       </header>
 
+      {importError && (
+        <div className="rounded-xl bg-piano-bad/15 border border-piano-bad/30 p-3 text-sm text-piano-bad">
+          {importError}
+        </div>
+      )}
+
       {CATEGORIES.map((cat) => {
-        const songs = LIBRARY.filter((s) => s.category === cat.id);
+        const songs = allSongs.filter((s) => s.category === cat.id);
         if (songs.length === 0) return null;
         return (
           <section key={cat.id} className="flex flex-col gap-2">
@@ -43,8 +123,8 @@ export function SongList() {
             </h2>
             <div className="grid gap-3">
               {songs.map((song) => {
-                const mastery = songMastery(lessons, song.id);
-                const dominated = isSongDominated(lessons, song.id);
+                const mastery = songMasteryOf(lessons, song);
+                const dominated = isSongDominatedSong(lessons, song);
                 const bronzeCount = song.phrases.filter(
                   (_, i) => MASTERY_RANK[masteryOf(lessons[phraseKey(song.id, i)])] >= MASTERY_RANK.bronze
                 ).length;
@@ -82,7 +162,8 @@ export function SongList() {
 
       <p className="text-xs text-piano-muted">
         Las piezas marcadas como «arreglo simplificado» son transcripciones libres de una sola voz con fines
-        educativos, para uso personal; el resto del repertorio es de dominio público.
+        educativos, para uso personal; el resto del repertorio es de dominio público. De las partituras
+        importadas se extrae automáticamente la melodía (voz superior).
       </p>
     </div>
   );
@@ -90,42 +171,63 @@ export function SongList() {
 
 export function SongDetail() {
   const { songId } = useParams();
-  const song = songId ? songByIdLib(songId) : undefined;
+  const navigate = useNavigate();
+  const userSongs = useUserSongsStore((s) => s.songs);
+  const removeSong = useUserSongsStore((s) => s.removeSong);
+  const song = useMemo(
+    () => LIBRARY.find((s) => s.id === songId) ?? userSongs.find((s) => s.id === songId),
+    [songId, userSongs]
+  );
   const [selected, setSelected] = useState<number | typeof FULL>(0);
+  const [practiceMode, setPracticeMode] = useState<PracticeMode>('step');
   const [runKey, setRunKey] = useState(0);
   const [lastResult, setLastResult] = useState<ExerciseResult | null>(null);
   const a4 = useSettingsStore((s) => s.a4);
   const lessons = useProgressStore((s) => s.lessons);
   const recordPractice = useProgressStore((s) => s.recordPractice);
 
-  const exercise = useMemo<Exercise | null>(() => {
+  // Datos de la selección (frase o canción completa) con tiempos reales.
+  const flowData = useMemo(() => {
     if (!song) return null;
     if (selected === FULL) {
-      const notes = song.phrases.flatMap((p) => p.notes);
-      const durations = song.phrases.flatMap((p) => p.notes.map((_, i) => p.durations?.[i] ?? 1));
-      return {
-        kind: 'playSequence',
-        id: `song-${song.id}-full`,
-        prompt: 'Canción completa: encadena todas las frases, a tu ritmo y sin errores.',
-        targets: notes,
-        durations,
-        bpm: song.bpm,
-        showStaff: false, // demasiadas notas para un solo pentagrama legible
-      };
+      const notes: number[] = [];
+      const offsets: number[] = [];
+      const durations: number[] = [];
+      let shift = 0;
+      for (const p of song.phrases) {
+        const off = phraseOffsetsBeats(p);
+        const dur = phraseDurationsBeats(p);
+        off.forEach((o, i) => {
+          notes.push(p.notes[i]);
+          offsets.push(o + shift);
+          durations.push(dur[i]);
+        });
+        shift = offsets[offsets.length - 1] + durations[durations.length - 1] + 1; // respiro entre frases
+      }
+      return { notes, offsets, durations };
     }
-    const phrase = song.phrases[selected];
-    return {
-      kind: 'playSequence',
-      id: `song-${song.id}-${selected}`,
-      prompt: `${phrase.name}: toca las notas en orden. Ve a tu ritmo.`,
-      targets: phrase.notes,
-      durations: phrase.durations,
-      bpm: song.bpm,
-      showStaff: true,
-    };
+    const p = song.phrases[selected];
+    return { notes: p.notes, offsets: phraseOffsetsBeats(p), durations: phraseDurationsBeats(p) };
   }, [song, selected]);
 
-  if (!song || !exercise) {
+  const exercise = useMemo<Exercise | null>(() => {
+    if (!song || !flowData) return null;
+    const prompt =
+      selected === FULL
+        ? 'Canción completa: encadena todas las frases, a tu ritmo y sin errores.'
+        : `${song.phrases[selected].name}: toca las notas en orden. Ve a tu ritmo.`;
+    return {
+      kind: 'playSequence',
+      id: `song-${song.id}-${String(selected)}`,
+      prompt,
+      targets: flowData.notes,
+      durations: flowData.durations,
+      bpm: song.bpm,
+      showStaff: selected !== FULL,
+    };
+  }, [song, selected, flowData]);
+
+  if (!song || !exercise || !flowData) {
     return (
       <div className="text-center py-16">
         <p className="text-piano-muted mb-4">Canción no encontrada.</p>
@@ -141,16 +243,17 @@ export function SongDetail() {
   const allBronze = song.phrases.every(
     (_, i) => MASTERY_RANK[masteryOf(lessons[phraseKey(song.id, i)])] >= MASTERY_RANK.bronze
   );
-  const dominated = isSongDominated(lessons, song.id);
+  const dominated = isSongDominatedSong(lessons, song);
 
-  function listenPhrase(i: number) {
-    playTimedSequence(song!.phrases[i].notes, phraseDurationsSec(song!.phrases[i], song!.bpm), a4);
+  function listen() {
+    const beat = 60 / song!.bpm;
+    playTimedSequence(flowData!.notes, flowData!.durations.map((d) => d * beat), a4);
   }
 
   function listenWholeSong() {
     const notes: number[] = [];
     const durs: number[] = [];
-    const breath = 60 / song!.bpm; // un tiempo de respiro entre frases
+    const breath = 60 / song!.bpm;
     song!.phrases.forEach((p, pi) => {
       const d = phraseDurationsSec(p, song!.bpm);
       notes.push(...p.notes);
@@ -171,6 +274,13 @@ export function SongDetail() {
     setLastResult(result);
   }
 
+  function deleteSong() {
+    if (confirm(`¿Borrar "${song!.title}" de tus partituras importadas?`)) {
+      removeSong(song!.id);
+      navigate('/canciones');
+    }
+  }
+
   const nextPhraseIdx = typeof selected === 'number' && selected + 1 < song.phrases.length ? selected + 1 : null;
 
   return (
@@ -181,13 +291,18 @@ export function SongDetail() {
 
       <header className="flex items-start gap-3">
         <span className="text-4xl">{song.emoji}</span>
-        <div>
+        <div className="flex-1">
           <h1 className="text-2xl font-bold">{song.title}</h1>
           <p className="text-piano-muted text-sm">
             {song.origin} · <span className={`capitalize ${LEVEL_COLOR[song.level]}`}>{song.level}</span> · ♩ ≈ {song.bpm}
           </p>
-          {song.isExcerpt && <span className="chip mt-1">Fragmento simplificado</span>}
+          {song.isExcerpt && song.category !== 'importada' && <span className="chip mt-1">Arreglo simplificado</span>}
         </div>
+        {song.category === 'importada' && (
+          <button className="btn-ghost text-piano-bad" onClick={deleteSong} title="Borrar esta partitura">
+            <Trash2 size={18} />
+          </button>
+        )}
       </header>
 
       {dominated && (
@@ -229,6 +344,33 @@ export function SongDetail() {
         </button>
       </div>
 
+      {/* Modo de práctica */}
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-xs text-piano-muted uppercase tracking-wide">Modo:</span>
+        {(
+          [
+            { id: 'step', label: '🐢 Paso a paso', tip: 'Sin reloj: cada nota te espera.' },
+            { id: 'wait', label: '🤝 Espérame', tip: 'Las notas caen con el tempo, pero la canción se pausa hasta que toques la nota.' },
+            { id: 'go', label: '🌊 Corrido', tip: 'La canción no se detiene: si se te va una nota, cuenta como fallo y sigue.' },
+          ] as { id: PracticeMode; label: string; tip: string }[]
+        ).map((m) => (
+          <button
+            key={m.id}
+            title={m.tip}
+            onClick={() => {
+              setPracticeMode(m.id);
+              setLastResult(null);
+              setRunKey((k) => k + 1);
+            }}
+            className={`px-3 py-1.5 rounded-xl text-sm transition ${
+              practiceMode === m.id ? 'bg-piano-primary text-white' : 'bg-white/5 text-piano-muted hover:bg-white/10'
+            }`}
+          >
+            {m.label}
+          </button>
+        ))}
+      </div>
+
       {/* Estado de maestría de lo seleccionado */}
       <div className="flex flex-wrap items-center gap-3 text-sm text-piano-muted">
         <span className="chip">
@@ -249,10 +391,7 @@ export function SongDetail() {
       </div>
 
       <div className="flex gap-2">
-        <button
-          className="btn-ghost"
-          onClick={() => (selected === FULL ? listenWholeSong() : listenPhrase(selected))}
-        >
+        <button className="btn-ghost" onClick={listen}>
           <Volume2 size={18} /> Escuchar {selected === FULL ? 'canción' : 'frase'}
         </button>
         {selected !== FULL && (
@@ -263,7 +402,19 @@ export function SongDetail() {
       </div>
 
       <div className="card p-5">
-        <ExerciseRunner key={`${String(selected)}-${runKey}`} exercise={exercise} onComplete={handleComplete} />
+        {practiceMode === 'step' ? (
+          <ExerciseRunner key={`step-${String(selected)}-${runKey}`} exercise={exercise} onComplete={handleComplete} />
+        ) : (
+          <FlowRunner
+            key={`${practiceMode}-${String(selected)}-${runKey}`}
+            notes={flowData.notes}
+            offsetsBeats={flowData.offsets}
+            durationsBeats={flowData.durations}
+            bpm={song.bpm}
+            mode={practiceMode}
+            onComplete={(r) => handleComplete(r)}
+          />
+        )}
 
         {/* Panel tras completar: decidir conscientemente entre repetir o avanzar */}
         {lastResult && (

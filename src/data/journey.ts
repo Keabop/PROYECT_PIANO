@@ -4,7 +4,7 @@
 // a cierto nivel. evaluateJourney() es pura y testeable.
 
 import { MODULES, lessonKey } from './curriculum';
-import { LIBRARY, phraseKey } from './library';
+import { LIBRARY, phraseKey, type LibrarySong } from './library';
 import { MASTERY_RANK, masteryOf, type Mastery, type PracticeRecord } from '../store/useProgressStore';
 
 export interface DrillReq {
@@ -151,22 +151,32 @@ export function isModuleComplete(records: Records, moduleId: string): boolean {
   return mod.lessons.every((l) => !!records[lessonKey(moduleId, l.id)]);
 }
 
-/** Maestría de una canción = la mínima de sus frases. */
-export function songMastery(records: Records, songId: string): Mastery {
-  const song = LIBRARY.find((s) => s.id === songId);
-  if (!song) return 'new';
+/** Maestría de una canción (objeto) = la mínima de sus frases. Sirve también para importadas. */
+export function songMasteryOf(records: Records, song: LibrarySong): Mastery {
   let min: Mastery = 'gold';
   for (let i = 0; i < song.phrases.length; i++) {
-    const m = masteryOf(records[phraseKey(songId, i)]);
+    const m = masteryOf(records[phraseKey(song.id, i)]);
     if (MASTERY_RANK[m] < MASTERY_RANK[min]) min = m;
   }
   return min;
 }
 
-/** Canción dominada: todas las frases ≥ plata y la canción completa tocada limpia. */
+/** Maestría por id (solo biblioteca integrada; para el camino). */
+export function songMastery(records: Records, songId: string): Mastery {
+  const song = LIBRARY.find((s) => s.id === songId);
+  return song ? songMasteryOf(records, song) : 'new';
+}
+
+/** Canción dominada (objeto): todas las frases ≥ plata y la completa tocada limpia. */
+export function isSongDominatedSong(records: Records, song: LibrarySong): boolean {
+  const full = records[`cancion/${song.id}/full`];
+  return MASTERY_RANK[songMasteryOf(records, song)] >= MASTERY_RANK.silver && (full?.cleanReps ?? 0) >= 1;
+}
+
+/** Canción dominada por id (solo biblioteca integrada). */
 export function isSongDominated(records: Records, songId: string): boolean {
-  const full = records[`cancion/${songId}/full`];
-  return MASTERY_RANK[songMastery(records, songId)] >= MASTERY_RANK.silver && (full?.cleanReps ?? 0) >= 1;
+  const song = LIBRARY.find((s) => s.id === songId);
+  return song ? isSongDominatedSong(records, song) : false;
 }
 
 function countSongsAt(records: Records, req: SongReq): number {

@@ -32,6 +32,15 @@ de tu dispositivo**.
     sobre TensorFlow.js, seleccionable en Ajustes. Más robusto con pianos reales y ruido, a
     cambio de ~1 s de latencia. El modelo (~900 KB) se sirve localmente y se carga solo si lo
     activas; el audio nunca sale del navegador.
+- **Importa tus partituras**: archivos **MIDI (.mid/.midi)** y **MusicXML
+  (.musicxml/.xml/.mxl)**. La app extrae la melodía (voz superior), normaliza la octava,
+  detecta el tempo y la divide en frases practicables — con medallas y los tres modos.
+- **Tres modos de práctica** en cada canción:
+  - 🐢 **Paso a paso** — sin reloj, cada nota te espera (ideal para aprender).
+  - 🤝 **Espérame** — las notas caen con el tempo real, pero la canción se pausa hasta
+    que toques la nota correcta (estilo "practice mode").
+  - 🌊 **Corrido** — la canción no se detiene: nota no tocada = fallo; resumen de
+    precisión al final (con control de velocidad 0.5×/0.75×/1×).
 - **Sonido de piano real**: las notas de referencia suenan con muestras del
   [Salamander Grand Piano](https://archive.org/details/SalamanderGrandPianoV3) (Yamaha C5,
   CC BY 3.0, ~1.4 MB cargados bajo demanda) vía Tone.Sampler, con reverberación de sala y

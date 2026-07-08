@@ -185,7 +185,63 @@ await scenario('Motor ML (Basic Pitch): detecta Do·Mi·Sol en juego libre', asy
   }
 });
 
-// 5) BOTÓN "ESCUCHAR": tras un gesto, el audio queda desbloqueado y el clic no falla.
+// 5) MODO "ESPÉRAME" (cascada continua que pausa en cada nota): la frase de la Oda
+//    se completa con audio real — la canción avanza solo cuando el micrófono
+//    escucha la nota correcta.
+await scenario('Modo Espérame: cascada continua completada con el micrófono', async () => {
+  const { browser, page } = await launchWithMic(join(audioDir, 'oda.wav'), SETTINGS());
+  try {
+    await page.goto(`${BASE}/canciones/oda-alegria`, { waitUntil: 'networkidle' });
+    await page.getByRole('button', { name: /Espérame/ }).click();
+    await page.locator('[data-testid="flow-waterfall"]').waitFor({ timeout: 5000 });
+    await page.getByRole('button', { name: /Activar micrófono/ }).click();
+    await page.getByText('Escuchando tu piano').waitFor({ timeout: 8000 });
+    await page.locator('[data-testid="flow-play"]').click(); // Empezar
+    // 15 notas ≈ 15 s de WAV; margen por entrar a mitad de loop y el lead-in.
+    await page.getByText(/notas acertadas/).waitFor({ timeout: 120000 });
+    const summary = await page.getByText(/notas acertadas/).textContent();
+    if (!/15\/15/.test(summary ?? '')) throw new Error('No acertó todas: ' + summary);
+    await page.screenshot({ path: join(SHOTS, '5-esperame.png') });
+  } finally {
+    await browser.close();
+  }
+});
+
+// 6) IMPORTAR PARTITURA: un MIDI real se importa por la UI y queda practicable.
+await scenario('Importar MIDI: crea la canción con frases y ritmo', async () => {
+  // Genera un MIDI real con @tonejs/midi (la misma lib que usa la app).
+  const midiMod = await import('@tonejs/midi');
+  const Midi = midiMod.Midi ?? midiMod.default.Midi;
+  const midi = new Midi();
+  midi.header.setTempo(100);
+  const track = midi.addTrack();
+  const beat = 60 / 100;
+  [60, 62, 64, 65, 67, 65, 64, 62, 60].forEach((m, i) => {
+    track.addNote({ midi: m, time: i * beat, duration: beat * 0.9 });
+  });
+  const midiPath = join(audioDir, 'importado.mid');
+  const { writeFileSync } = await import('node:fs');
+  writeFileSync(midiPath, Buffer.from(midi.toArray()));
+
+  const { browser, page } = await launchWithMic(join(audioDir, 'nota-do.wav'), SETTINGS());
+  try {
+    await page.goto(`${BASE}/canciones`, { waitUntil: 'networkidle' });
+    await page.locator('input[type="file"]').setInputFiles(midiPath);
+    // Navega sola al detalle de la canción importada.
+    await page.getByText('Importada por ti').waitFor({ timeout: 10000 });
+    await page.getByRole('button', { name: /Frase 1/ }).waitFor({ timeout: 5000 });
+    // Los tres modos disponibles también para partituras importadas.
+    await page.getByRole('button', { name: /Corrido/ }).waitFor({ timeout: 3000 });
+    await page.screenshot({ path: join(SHOTS, '6-importada.png') });
+    // Y aparece en la lista bajo su categoría.
+    await page.goto(`${BASE}/canciones`, { waitUntil: 'networkidle' });
+    await page.getByText('Mis partituras importadas').waitFor({ timeout: 5000 });
+  } finally {
+    await browser.close();
+  }
+});
+
+// 7) BOTÓN "ESCUCHAR": tras un gesto, el audio queda desbloqueado y el clic no falla.
 await scenario('Botón «Escuchar»: el audio se desbloquea y reproduce sin errores', async () => {
   const { browser, page } = await launchWithMic(join(audioDir, 'nota-do.wav'), SETTINGS());
   try {

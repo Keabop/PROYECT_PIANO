@@ -16,13 +16,17 @@ function N(s: string): number[] {
   return s.trim().split(/\s+/).map((x) => nameToMidi(x) as number);
 }
 
-export type SongCategory = 'clásica' | 'tradicional' | 'cine y series' | 'moderna';
+export type SongCategory = 'clásica' | 'tradicional' | 'cine y series' | 'moderna' | 'importada';
 
 export interface SongPhrase {
   name: string;
   notes: number[];
   /** Duración de cada nota en tiempos; debe tener la misma longitud que notes. */
   durations?: number[];
+  /** Tiempo de INICIO de cada nota en tiempos desde el comienzo de la frase.
+   *  Permite silencios reales (partituras importadas). Sin él, las notas van
+   *  seguidas (cada una empieza donde termina la anterior). */
+  offsets?: number[];
 }
 
 export interface LibrarySong {
@@ -581,9 +585,28 @@ export function phraseDurationsSec(phrase: SongPhrase, bpm: number): number[] {
   return phrase.notes.map((_, i) => (phrase.durations?.[i] ?? 1) * beat);
 }
 
+/** Duraciones de una frase en TIEMPOS (1 por defecto). */
+export function phraseDurationsBeats(phrase: SongPhrase): number[] {
+  return phrase.notes.map((_, i) => phrase.durations?.[i] ?? 1);
+}
+
+/** Tiempos de inicio en TIEMPOS: los explícitos, o acumulados si la frase es legato. */
+export function phraseOffsetsBeats(phrase: SongPhrase): number[] {
+  if (phrase.offsets) return phrase.offsets;
+  const durs = phraseDurationsBeats(phrase);
+  const out: number[] = [];
+  let t = 0;
+  for (const d of durs) {
+    out.push(t);
+    t += d;
+  }
+  return out;
+}
+
 export const CATEGORIES: { id: SongCategory; title: string; emoji: string }[] = [
   { id: 'clásica', title: 'Clásica', emoji: '🎼' },
   { id: 'tradicional', title: 'Tradicional y popular', emoji: '🌍' },
   { id: 'cine y series', title: 'Cine y series', emoji: '🎬' },
   { id: 'moderna', title: 'Moderna', emoji: '🎧' },
+  { id: 'importada', title: 'Mis partituras importadas', emoji: '📄' },
 ];
