@@ -17,6 +17,9 @@ export const WHITE_W = 34;
 const WHITE_H = 150;
 export const BLACK_W = 21;
 const BLACK_H = 96;
+/** Ancho máximo EN PANTALLA de una tecla blanca: evita teclas gigantes en escritorio
+ *  cuando el rango es corto (el SVG escala al ancho del contenedor). */
+export const MAX_KEY_PX = 52;
 
 export interface KeyboardLayout {
   whites: { midi: number; x: number }[];
@@ -77,7 +80,12 @@ export default function PianoKeyboard({
         viewBox={`0 0 ${width} ${viewH}`}
         width={height ? width * scale : '100%'}
         height={height ?? undefined}
-        style={{ maxWidth: '100%', display: 'block', touchAction: 'manipulation' }}
+        style={{
+          maxWidth: height ? '100%' : whites.length * MAX_KEY_PX,
+          display: 'block',
+          marginInline: 'auto',
+          touchAction: 'manipulation',
+        }}
         role="img"
         aria-label="Teclado de piano"
       >

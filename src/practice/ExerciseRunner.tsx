@@ -99,10 +99,13 @@ function PlayExercise({
     ? true
     : mic.midi != null && index < targets.length && pitchClass(mic.midi) === pitchClass(targets[index]);
 
-  // Rango del teclado según las notas
+  // Rango del teclado según las notas, redondeado a octavas completas (Do a Do):
+  // da contexto visual y evita que 3-4 teclas se estiren a pantalla completa.
   const [from, to] = useMemo(() => {
-    const lo = Math.min(...targets) - 2;
-    const hi = Math.max(...targets) + 2;
+    let lo = Math.min(...targets) - 1;
+    let hi = Math.max(...targets) + 1;
+    lo -= pitchClass(lo); // baja al Do anterior
+    hi += (12 - pitchClass(hi)) % 12; // sube al Do siguiente
     return [Math.max(36, lo), Math.min(96, hi)];
   }, [targets]);
 

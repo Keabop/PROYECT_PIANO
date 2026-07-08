@@ -5,7 +5,7 @@
 
 import { useMemo } from 'react';
 import { pitchClassName } from '../../audio/noteUtils';
-import { keyboardLayout } from '../Piano/PianoKeyboard';
+import { keyboardLayout, MAX_KEY_PX } from '../Piano/PianoKeyboard';
 import { useSettingsStore } from '../../store/useSettingsStore';
 
 export const PX_PER_BEAT = 46;
@@ -64,7 +64,10 @@ interface NoteWaterfallProps {
 
 export default function NoteWaterfall({ targets, durations, index, from, to, height = 250, done }: NoteWaterfallProps) {
   const naming = useSettingsStore((s) => s.naming);
-  const width = useMemo(() => keyboardLayout(from, to).width, [from, to]);
+  const { width, whiteCount } = useMemo(() => {
+    const l = keyboardLayout(from, to);
+    return { width: l.width, whiteCount: l.whites.length };
+  }, [from, to]);
   const blocks = useMemo(
     () => (done ? [] : waterfallLayout(targets, durations, index, from, to, height)),
     [targets, durations, index, from, to, height, done]
@@ -72,7 +75,13 @@ export default function NoteWaterfall({ targets, durations, index, from, to, hei
 
   return (
     <div className="w-full overflow-hidden rounded-t-xl bg-black/30" data-testid="waterfall">
-      <svg viewBox={`0 0 ${width} ${height}`} width="100%" style={{ display: 'block' }} aria-label="Notas en cascada">
+      <svg
+        viewBox={`0 0 ${width} ${height}`}
+        width="100%"
+        // Mismo tope de ancho que PianoKeyboard para que las columnas queden alineadas.
+        style={{ display: 'block', maxWidth: whiteCount * MAX_KEY_PX, marginInline: 'auto' }}
+        aria-label="Notas en cascada"
+      >
         {/* Guías de octava (líneas en cada Do) */}
         {keyboardLayout(from, to)
           .whites.filter((w) => w.midi % 12 === 0)
