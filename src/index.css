@@ -1,0 +1,57 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background-color: #0f1020;
+  color: #e7e7f4;
+  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Fondo con degradado sutil */
+#root {
+  background: radial-gradient(1200px 600px at 50% -10%, rgba(124, 92, 255, 0.18), transparent 60%),
+    #0f1020;
+}
+
+@layer components {
+  .card {
+    @apply bg-piano-surface rounded-2xl border border-white/5 shadow-lg;
+  }
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl font-medium transition
+      active:scale-[0.98] disabled:opacity-40 disabled:pointer-events-none;
+  }
+  .btn-primary {
+    @apply btn bg-piano-primary hover:bg-piano-primaryDark text-white px-5 py-2.5;
+  }
+  .btn-ghost {
+    @apply btn bg-white/5 hover:bg-white/10 text-piano-text px-4 py-2;
+  }
+  .chip {
+    @apply inline-flex items-center gap-1.5 rounded-full bg-white/5 px-3 py-1 text-sm text-piano-muted;
+  }
+}
+
+/* Scrollbars */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+}
