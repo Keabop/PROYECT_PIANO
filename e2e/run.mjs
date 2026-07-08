@@ -123,6 +123,8 @@ await scenario('Canción: frase de la Oda a la Alegría completada nota a nota',
   const { browser, page } = await launchWithMic(join(audioDir, 'oda.wav'), SETTINGS());
   try {
     await page.goto(`${BASE}/canciones/oda-alegria`, { waitUntil: 'networkidle' });
+    // La vista cascada (notas cayendo hacia el teclado) es la vista por defecto.
+    await page.locator('[data-testid="waterfall"]').waitFor({ timeout: 5000 });
     await page.getByRole('button', { name: /Activar micrófono/ }).click();
     await page.getByText('Escuchando tu piano').waitFor({ timeout: 8000 });
     // 15 notas ≈ 15 s por vuelta del WAV; margen para entrar a mitad de loop.

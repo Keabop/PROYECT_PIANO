@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
-import { CheckCircle2, Mic, RotateCcw, Volume2 } from 'lucide-react';
+import { CheckCircle2, FileMusic, Mic, RotateCcw, Volume2, Waves } from 'lucide-react';
 import type { Exercise } from '../data/curriculum';
 import { useMicrophone } from '../audio/useMicrophone';
 import { useNoteMatcher } from './useNoteMatcher';
@@ -9,6 +9,7 @@ import { playChord, playMidi, playSequence, playTimedSequence } from '../audio/s
 import { useSettingsStore } from '../store/useSettingsStore';
 import PianoKeyboard from '../components/Piano/PianoKeyboard';
 import Staff from '../components/Staff/Staff';
+import NoteWaterfall from '../components/Waterfall/NoteWaterfall';
 import QuizExercise from './QuizExercise';
 
 export interface ExerciseResult {
@@ -37,13 +38,18 @@ function PlayExercise({
 }) {
   const a4 = useSettingsStore((s) => s.a4);
   const detectionEngine = useSettingsStore((s) => s.detectionEngine);
+  const practiceView = useSettingsStore((s) => s.practiceView);
+  const setPracticeView = useSettingsStore((s) => s.setPracticeView);
   const chord = exercise.kind === 'playChord';
   const targets = useMemo<number[]>(
     () => (exercise.kind === 'playNote' ? [exercise.target] : exercise.targets),
     [exercise]
   );
-  const showStaff = exercise.kind === 'playSequence' && exercise.showStaff;
+  const isSequence = !chord && targets.length > 1;
   const clef = exercise.kind === 'playSequence' ? exercise.clef ?? 'treble' : 'treble';
+  const seqDurations = exercise.kind === 'playSequence' ? exercise.durations : undefined;
+  // Cascada para toda secuencia; la partitura queda como vista alternativa.
+  const useWaterfall = isSequence && practiceView === 'waterfall';
 
   const mic = useMicrophone({ mode: chord ? 'poly' : 'mono', engine: detectionEngine, a4 });
   const micActive = mic.status === 'active';
@@ -130,16 +136,41 @@ function PlayExercise({
 
   return (
     <div className="flex flex-col gap-4">
-      <p className="text-piano-text font-medium">{exercise.prompt}</p>
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-piano-text font-medium">{exercise.prompt}</p>
+        {isSequence && (
+          <div className="flex gap-1 shrink-0">
+            <button
+              className={`px-2.5 py-1 rounded-lg text-xs flex items-center gap-1 ${useWaterfall ? 'bg-piano-primary text-white' : 'bg-white/5 text-piano-muted'}`}
+              onClick={() => setPracticeView('waterfall')}
+              title="Vista cascada (las notas caen hacia el teclado)"
+            >
+              <Waves size={14} /> Cascada
+            </button>
+            <button
+              className={`px-2.5 py-1 rounded-lg text-xs flex items-center gap-1 ${!useWaterfall ? 'bg-piano-primary text-white' : 'bg-white/5 text-piano-muted'}`}
+              onClick={() => setPracticeView('staff')}
+              title="Vista partitura"
+            >
+              <FileMusic size={14} /> Partitura
+            </button>
+          </div>
+        )}
+      </div>
 
-      {showStaff && <Staff notes={targets} clef={clef} highlightIndex={done ? undefined : index} />}
+      {isSequence && !useWaterfall && <Staff notes={targets} clef={clef} highlightIndex={done ? undefined : index} />}
 
       <motion.div
         animate={wrongFlash ? { x: [0, -6, 6, -4, 0] } : {}}
         transition={{ duration: 0.25 }}
-        className={`rounded-2xl p-2 ${done ? 'ring-2 ring-piano-good' : ''}`}
+        className={`rounded-2xl ${done ? 'ring-2 ring-piano-good' : ''}`}
       >
-        <PianoKeyboard from={from} to={to} highlight={done ? targets : highlight} detected={detected} detectedOk={detectedOk} onPlay={handlePlay} />
+        {useWaterfall && (
+          <NoteWaterfall targets={targets} durations={seqDurations} index={index} from={from} to={to} done={done} />
+        )}
+        <div className={useWaterfall ? '' : 'p-2'}>
+          <PianoKeyboard from={from} to={to} highlight={done ? targets : highlight} detected={detected} detectedOk={detectedOk} onPlay={handlePlay} />
+        </div>
       </motion.div>
 
       {/* Progreso de secuencia */}

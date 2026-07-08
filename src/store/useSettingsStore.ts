@@ -13,6 +13,7 @@ interface SettingsState {
   theme: 'dark' | 'light';
   micSensitivity: number; // 0..1, ajusta umbrales (0 = estricto, 1 = permisivo)
   detectionEngine: DetectionEngine; // motor para acordes (poly)
+  practiceView: 'waterfall' | 'staff'; // vista de secuencias: cascada o partitura
   setOnboarded: (v: boolean) => void;
   setMicGranted: (v: boolean) => void;
   setA4: (v: number) => void;
@@ -20,6 +21,7 @@ interface SettingsState {
   setTheme: (v: 'dark' | 'light') => void;
   setMicSensitivity: (v: number) => void;
   setDetectionEngine: (v: DetectionEngine) => void;
+  setPracticeView: (v: 'waterfall' | 'staff') => void;
 }
 
 export const useSettingsStore = create<SettingsState>()(
@@ -32,6 +34,7 @@ export const useSettingsStore = create<SettingsState>()(
       theme: 'dark',
       micSensitivity: 0.5,
       detectionEngine: 'standard',
+      practiceView: 'waterfall',
       setOnboarded: (v) => set({ onboarded: v }),
       setMicGranted: (v) => set({ micGranted: v }),
       setA4: (v) => set({ a4: v }),
@@ -39,6 +42,7 @@ export const useSettingsStore = create<SettingsState>()(
       setTheme: (v) => set({ theme: v }),
       setMicSensitivity: (v) => set({ micSensitivity: v }),
       setDetectionEngine: (v) => set({ detectionEngine: v }),
+      setPracticeView: (v) => set({ practiceView: v }),
     }),
     { name: 'pianoapp-settings' }
   )

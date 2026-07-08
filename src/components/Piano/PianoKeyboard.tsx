@@ -13,10 +13,38 @@ interface PianoKeyboardProps {
   height?: number;
 }
 
-const WHITE_W = 34;
+export const WHITE_W = 34;
 const WHITE_H = 150;
-const BLACK_W = 21;
+export const BLACK_W = 21;
 const BLACK_H = 96;
+
+export interface KeyboardLayout {
+  whites: { midi: number; x: number }[];
+  blacks: { midi: number; x: number }[];
+  width: number;
+  /** Rectángulo horizontal (x, ancho) de una tecla — para alinear otras vistas (cascada). */
+  keyRect: (midi: number) => { x: number; w: number; black: boolean } | null;
+}
+
+/** Geometría del teclado, compartida entre PianoKeyboard y la vista de cascada. */
+export function keyboardLayout(from: number, to: number): KeyboardLayout {
+  const whites: { midi: number; x: number }[] = [];
+  const blacks: { midi: number; x: number }[] = [];
+  let whiteIndex = 0;
+  for (let midi = from; midi <= to; midi++) {
+    if (isBlackKey(midi)) {
+      blacks.push({ midi, x: whiteIndex * WHITE_W - BLACK_W / 2 });
+    } else {
+      whites.push({ midi, x: whiteIndex * WHITE_W });
+      whiteIndex++;
+    }
+  }
+  const width = whiteIndex * WHITE_W;
+  const map = new Map<number, { x: number; w: number; black: boolean }>();
+  for (const k of whites) map.set(k.midi, { x: k.x + 1, w: WHITE_W - 2, black: false });
+  for (const k of blacks) map.set(k.midi, { x: k.x, w: BLACK_W, black: true });
+  return { whites, blacks, width, keyRect: (midi) => map.get(midi) ?? null };
+}
 
 export default function PianoKeyboard({
   from = 48,
@@ -32,20 +60,7 @@ export default function PianoKeyboard({
   const highlightSet = useMemo(() => new Set(highlight), [highlight]);
   const detectedSet = useMemo(() => new Set(detected), [detected]);
 
-  const { whites, blacks, width } = useMemo(() => {
-    const whites: { midi: number; x: number }[] = [];
-    const blacks: { midi: number; x: number }[] = [];
-    let whiteIndex = 0;
-    for (let midi = from; midi <= to; midi++) {
-      if (isBlackKey(midi)) {
-        blacks.push({ midi, x: whiteIndex * WHITE_W - BLACK_W / 2 });
-      } else {
-        whites.push({ midi, x: whiteIndex * WHITE_W });
-        whiteIndex++;
-      }
-    }
-    return { whites, blacks, width: whiteIndex * WHITE_W };
-  }, [from, to]);
+  const { whites, blacks, width } = useMemo(() => keyboardLayout(from, to), [from, to]);
 
   const scale = height ? height / WHITE_H : 1;
   const viewH = WHITE_H;
