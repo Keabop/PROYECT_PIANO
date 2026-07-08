@@ -8,6 +8,7 @@ import { detectPitch } from './pitchDetector';
 import { detectPolyphony, type ActiveNote } from './polyphonicDetector';
 import { centsOff, freqToNearestMidi } from './noteUtils';
 import { detectNotesML, getMLStatus, loadML, onMLStatus, resampleTo22050, type MLStatus } from './mlDetector';
+import { getSharedAudioContext } from './synth';
 import { useSettingsStore } from '../store/useSettingsStore';
 
 export type MicStatus = 'idle' | 'requesting' | 'active' | 'denied' | 'unsupported' | 'error';
@@ -56,6 +57,7 @@ export function useMicrophone(options: UseMicrophoneOptions = {}) {
   const micSensitivity = useSettingsStore((s) => s.micSensitivity);
 
   const ctxRef = useRef<AudioContext | null>(null);
+  const sourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const bufRef = useRef<Float32Array<ArrayBuffer> | null>(null);
@@ -83,11 +85,12 @@ export function useMicrophone(options: UseMicrophoneOptions = {}) {
     rafRef.current = null;
     streamRef.current?.getTracks().forEach((t) => t.stop());
     streamRef.current = null;
-    if (ctxRef.current && ctxRef.current.state !== 'closed') {
-      ctxRef.current.close().catch(() => {});
-    }
-    ctxRef.current = null;
+    // El AudioContext es COMPARTIDO con la reproducción (Tone): se desconectan los
+    // nodos del micrófono pero NO se cierra el contexto (cerrarlo dejaría muda la app).
+    sourceRef.current?.disconnect();
+    sourceRef.current = null;
     analyserRef.current = null;
+    ctxRef.current = null;
     setState((s) => ({ ...INITIAL, mlStatus: s.mlStatus, status: s.status === 'denied' ? 'denied' : 'idle' }));
   }, []);
 
@@ -164,10 +167,13 @@ export function useMicrophone(options: UseMicrophoneOptions = {}) {
         },
       });
       streamRef.current = stream;
-      const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-      const ctx = new AudioCtx();
+      // Contexto COMPARTIDO con la reproducción: entrada y salida en la misma sesión
+      // de audio del sistema (evita que el SO silencie la salida al abrir el micro).
+      const ctx = getSharedAudioContext();
+      if (ctx.state === 'suspended') await ctx.resume().catch(() => {});
       ctxRef.current = ctx;
       const source = ctx.createMediaStreamSource(stream);
+      sourceRef.current = source;
       const analyser = ctx.createAnalyser();
       // Con ML usamos la ventana más larga disponible (~0.7 s a 44.1 kHz) para dar
       // más contexto al modelo; con el motor estándar basta 16384.

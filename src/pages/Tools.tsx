@@ -1,8 +1,9 @@
 import { useState } from 'react';
+import { Volume2 } from 'lucide-react';
 import Metronome from '../components/Metronome/Metronome';
 import Tuner from '../components/Tuner/Tuner';
 import PianoKeyboard from '../components/Piano/PianoKeyboard';
-import { playMidi } from '../audio/synth';
+import { playMidi, playSequence } from '../audio/synth';
 import { useSettingsStore } from '../store/useSettingsStore';
 
 export default function Tools() {
@@ -44,6 +45,20 @@ export default function Tools() {
       {/* Ajustes */}
       <div className="card p-5 flex flex-col gap-4">
         <h3 className="text-lg font-semibold">Ajustes</h3>
+
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center justify-between">
+            <span className="text-sm">Prueba de sonido</span>
+            <button className="btn-ghost" onClick={() => playSequence([60, 64, 67, 72], 0.28, 0.3, a4)}>
+              <Volume2 size={18} /> Probar sonido
+            </button>
+          </div>
+          <p className="text-xs text-piano-muted">
+            ¿No se oye? Sube el volumen multimedia del dispositivo y, en iPhone, revisa el interruptor
+            lateral de silencio (silencia el audio de las webs). Si usas auriculares Bluetooth, puede
+            haber un pequeño retardo.
+          </p>
+        </div>
 
         <div className="flex items-center justify-between">
           <span className="text-sm">Nombres de notas</span>
