@@ -141,6 +141,16 @@ function PlayExercise({ exercise, onComplete }: { exercise: Exclude<Exercise, { 
         ) : (
           <span className="chip text-piano-good">
             <span className="h-2 w-2 rounded-full bg-piano-good animate-pulse" /> Escuchando tu piano
+            {/* Barrita de volumen: muestra si el micro está captando sonido */}
+            <span className="ml-1 flex h-3 w-14 items-end gap-[2px]" aria-label="Nivel del micrófono">
+              {[0.12, 0.3, 0.5, 0.7, 0.85].map((th, i) => (
+                <span
+                  key={i}
+                  className={`w-2 rounded-sm transition-colors ${mic.volume >= th ? 'bg-piano-good' : 'bg-white/15'}`}
+                  style={{ height: `${(i + 1) * 20}%` }}
+                />
+              ))}
+            </span>
           </span>
         )}
         <button className="btn-ghost" onClick={reset}>

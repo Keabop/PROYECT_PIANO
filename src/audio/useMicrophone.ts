@@ -126,10 +126,13 @@ export function useMicrophone(options: UseMicrophoneOptions = {}) {
         }
       }
     } else {
-      // Modo mono: ventana corta para baja latencia.
-      const window = buf.subarray(0, 2048);
-      const clarityThreshold = 0.95 - 0.15 * sens;
-      const res = detectPitch(window, ctx.sampleRate, { clarityThreshold });
+      // Modo mono: analiza las muestras MÁS RECIENTES del buffer (el AnalyserNode
+      // entrega las últimas fftSize muestras: lo nuevo está al final). Usar el inicio
+      // significaría analizar audio ~300 ms viejo, cuando la nota ya decayó.
+      const window = buf.subarray(buf.length - 4096);
+      const clarityThreshold = 0.93 - 0.2 * sens;
+      const minRms = 0.008 - 0.005 * sens;
+      const res = detectPitch(window, ctx.sampleRate, { clarityThreshold, minRms });
       const midi = res.frequency > 0 ? freqToNearestMidi(res.frequency, a4) : null;
       const cents = res.frequency > 0 ? centsOff(res.frequency, a4) : 0;
       setState((s) => ({

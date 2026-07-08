@@ -16,20 +16,21 @@ const EMPTY: PitchResult = { frequency: 0, clarity: 0, rms: 0 };
  * @param sampleRate  frecuencia de muestreo (Hz)
  * @param opts.minFreq / maxFreq  rango de búsqueda (por defecto rango de piano útil)
  * @param opts.clarityThreshold  umbral mínimo de claridad para aceptar (0..1)
+ * @param opts.minRms  puerta de volumen: por debajo se considera silencio
  */
 export function detectPitch(
   buffer: Float32Array,
   sampleRate: number,
-  opts: { minFreq?: number; maxFreq?: number; clarityThreshold?: number } = {}
+  opts: { minFreq?: number; maxFreq?: number; clarityThreshold?: number; minRms?: number } = {}
 ): PitchResult {
-  const { minFreq = 55, maxFreq = 1600, clarityThreshold = 0.9 } = opts;
+  const { minFreq = 55, maxFreq = 1600, clarityThreshold = 0.9, minRms = 0.006 } = opts;
   const n = buffer.length;
 
   // RMS: filtra silencio/ruido de fondo.
   let rms = 0;
   for (let i = 0; i < n; i++) rms += buffer[i] * buffer[i];
   rms = Math.sqrt(rms / n);
-  if (rms < 0.006) return { ...EMPTY, rms };
+  if (rms < minRms) return { ...EMPTY, rms };
 
   const maxLag = Math.min(Math.floor(sampleRate / minFreq), n - 1);
   const minLag = Math.max(2, Math.floor(sampleRate / maxFreq));

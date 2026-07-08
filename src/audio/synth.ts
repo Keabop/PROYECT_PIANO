@@ -6,13 +6,20 @@ import { midiToFreq } from './noteUtils';
 
 let piano: Tone.PolySynth | null = null;
 let metroSynth: Tone.MembraneSynth | null = null;
-let started = false;
 
-/** Debe llamarse dentro de un gesto del usuario (click/tap) antes de sonar. */
+/**
+ * Debe llamarse dentro de un gesto del usuario (click/tap) antes de sonar.
+ * IMPORTANTE: comprueba el estado en CADA llamada — en móvil el AudioContext se
+ * suspende con frecuencia (pestaña en segundo plano, el SO re-enruta el audio al
+ * abrir el micrófono...) y hay que reanudarlo, no solo "iniciarlo una vez".
+ */
 export async function ensureAudio(): Promise<void> {
-  if (!started) {
-    await Tone.start();
-    started = true;
+  if (Tone.getContext().state !== 'running') {
+    try {
+      await Tone.start();
+    } catch {
+      // Sin gesto válido el navegador lo rechaza; el siguiente clic lo reintentará.
+    }
   }
   if (!piano) {
     piano = new Tone.PolySynth(Tone.Synth, {

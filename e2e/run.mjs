@@ -177,6 +177,33 @@ await scenario('Motor ML (Basic Pitch): detecta Do·Mi·Sol en juego libre', asy
   }
 });
 
+// 5) BOTÓN "ESCUCHAR": tras un gesto, el audio queda desbloqueado y el clic no falla.
+await scenario('Botón «Escuchar»: el audio se desbloquea y reproduce sin errores', async () => {
+  const { browser, page } = await launchWithMic(join(audioDir, 'nota-do.wav'), SETTINGS());
+  try {
+    const errors = [];
+    page.on('pageerror', (e) => errors.push(e.message));
+    await page.goto(`${BASE}/canciones/oda-alegria`, { waitUntil: 'networkidle' });
+    await page.getByRole('button', { name: /Escuchar frase/ }).click();
+    // El primer gesto debe dejar el contexto de audio en 'running'.
+    await page.waitForFunction(
+      async () => {
+        const ctx = new AudioContext();
+        const st = ctx.state;
+        ctx.close();
+        return st === 'running';
+      },
+      { timeout: 10000 }
+    );
+    // Reproduce de nuevo (contexto ya activo) y verifica que no hay errores JS.
+    await page.getByRole('button', { name: /Canción completa/ }).click();
+    await page.waitForTimeout(1500);
+    if (errors.length) throw new Error('Errores al reproducir: ' + errors[0]);
+  } finally {
+    await browser.close();
+  }
+});
+
 // ------------------------------------------------------------------
 console.log('\n================ RESUMEN E2E ================');
 for (const r of results) {

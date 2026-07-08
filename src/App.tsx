@@ -11,6 +11,7 @@ import Tools from './pages/Tools';
 import EarTraining from './pages/EarTraining';
 import Progress from './pages/Progress';
 import { useSettingsStore } from './store/useSettingsStore';
+import { ensureAudio } from './audio/synth';
 
 export default function App() {
   const onboarded = useSettingsStore((s) => s.onboarded);
@@ -20,6 +21,26 @@ export default function App() {
   useEffect(() => {
     document.documentElement.classList.toggle('dark', theme === 'dark');
   }, [theme]);
+
+  // Desbloquea el audio (AudioContext) con el primer gesto del usuario en cualquier
+  // parte de la app — requisito de iOS/Android para poder reproducir sonido después.
+  useEffect(() => {
+    const unlock = () => {
+      ensureAudio().catch(() => {});
+    };
+    window.addEventListener('pointerdown', unlock, { once: true, passive: true });
+    // Si el SO suspende el contexto al volver a la pestaña, el siguiente gesto lo reanuda.
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') {
+        window.addEventListener('pointerdown', unlock, { once: true, passive: true });
+      }
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      window.removeEventListener('pointerdown', unlock);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, []);
 
   return (
     <Routes>

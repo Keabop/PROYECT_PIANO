@@ -34,4 +34,14 @@ describe('detectPitch (monofónico)', () => {
     const res = detectPitch(new Float32Array(4096), SR);
     expect(res.frequency).toBe(0);
   });
+
+  it('respeta la puerta de volumen minRms', () => {
+    const quiet = sine(440, 4096, 0.004); // señal muy débil (rms ≈ 0.0028)
+    // Con la puerta por defecto (0.006) se descarta…
+    expect(detectPitch(quiet, SR).frequency).toBe(0);
+    // …pero con una puerta más sensible sí se detecta.
+    const res = detectPitch(quiet, SR, { minRms: 0.002 });
+    expect(res.frequency).toBeGreaterThan(437);
+    expect(res.frequency).toBeLessThan(443);
+  });
 });
