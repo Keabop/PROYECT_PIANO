@@ -14,9 +14,9 @@ interface PianoKeyboardProps {
 }
 
 export const WHITE_W = 34;
-const WHITE_H = 150;
+const WHITE_H = 172; // proporción realista (más esbelta que ancha)
 export const BLACK_W = 21;
-const BLACK_H = 96;
+const BLACK_H = 108;
 /** Ancho máximo EN PANTALLA de una tecla blanca: evita teclas gigantes en escritorio
  *  cuando el rango es corto (el SVG escala al ancho del contenedor). */
 export const MAX_KEY_PX = 52;
@@ -68,10 +68,11 @@ export default function PianoKeyboard({
   const scale = height ? height / WHITE_H : 1;
   const viewH = WHITE_H;
 
-  function keyFill(midi: number, black: boolean): string {
+  // Color de resaltado (si lo hay); null = tecla en reposo con su degradado realista.
+  function overlayFill(midi: number): string | null {
     if (detectedSet.has(midi)) return detectedOk ? '#34d399' : '#fbbf24';
-    if (highlightSet.has(midi)) return '#7c5cff';
-    return black ? '#1b1c2b' : '#f6f6fb';
+    if (highlightSet.has(midi)) return '#38bdf8';
+    return null;
   }
 
   return (
@@ -89,30 +90,49 @@ export default function PianoKeyboard({
         role="img"
         aria-label="Teclado de piano"
       >
+        <defs>
+          {/* Tecla blanca: sombra del atril arriba, marfil brillante abajo */}
+          <linearGradient id="pk-white" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stopColor="#8e93a0" />
+            <stop offset="0.045" stopColor="#e6e8ee" />
+            <stop offset="0.75" stopColor="#f6f7fa" />
+            <stop offset="1" stopColor="#dcdee6" />
+          </linearGradient>
+          {/* Tecla negra: cuerpo oscuro con cara frontal iluminada */}
+          <linearGradient id="pk-black" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stopColor="#0c0d12" />
+            <stop offset="0.7" stopColor="#22242d" />
+            <stop offset="0.86" stopColor="#41444f" />
+            <stop offset="1" stopColor="#2a2c35" />
+          </linearGradient>
+        </defs>
+
+        {/* Fondo oscuro: los huecos entre teclas */}
+        <rect x={0} y={0} width={width} height={WHITE_H} fill="#0a0b10" />
+
         {/* Teclas blancas */}
         {whites.map(({ midi, x }) => {
-          const isHi = highlightSet.has(midi);
-          const isDet = detectedSet.has(midi);
+          const overlay = overlayFill(midi);
+          const isLit = overlay != null;
           return (
             <g key={midi} onPointerDown={() => onPlay?.(midi)} style={{ cursor: onPlay ? 'pointer' : 'default' }}>
               <rect
-                x={x + 1}
+                x={x + 0.75}
                 y={0}
-                width={WHITE_W - 2}
-                height={WHITE_H}
-                rx={4}
-                fill={keyFill(midi, false)}
-                stroke="#c7c7d6"
-                strokeWidth={1}
+                width={WHITE_W - 1.5}
+                height={WHITE_H - 1}
+                rx={2.5}
+                fill={overlay ?? 'url(#pk-white)'}
+                style={isLit ? { filter: `drop-shadow(0 0 6px ${overlay})` } : undefined}
               />
-              {(labels || isHi || isDet) && (
+              {(labels || isLit) && (
                 <text
                   x={x + WHITE_W / 2}
-                  y={WHITE_H - 12}
+                  y={WHITE_H - 11}
                   textAnchor="middle"
-                  fontSize={11}
+                  fontSize={10.5}
                   fontWeight={600}
-                  fill={isHi || isDet ? '#0f1020' : '#6b6e88'}
+                  fill={isLit ? '#0f1020' : '#9095a3'}
                 >
                   {pitchClassName(midi, naming)}
                 </text>
@@ -120,21 +140,39 @@ export default function PianoKeyboard({
             </g>
           );
         })}
+
         {/* Teclas negras (encima) */}
-        {blacks.map(({ midi, x }) => (
-          <g key={midi} onPointerDown={() => onPlay?.(midi)} style={{ cursor: onPlay ? 'pointer' : 'default' }}>
-            <rect
-              x={x}
-              y={0}
-              width={BLACK_W}
-              height={BLACK_H}
-              rx={3}
-              fill={keyFill(midi, true)}
-              stroke="#000"
-              strokeWidth={0.5}
-            />
-          </g>
-        ))}
+        {blacks.map(({ midi, x }) => {
+          const overlay = overlayFill(midi);
+          const isLit = overlay != null;
+          return (
+            <g key={midi} onPointerDown={() => onPlay?.(midi)} style={{ cursor: onPlay ? 'pointer' : 'default' }}>
+              <rect
+                x={x}
+                y={0}
+                width={BLACK_W}
+                height={BLACK_H}
+                rx={2.5}
+                fill={overlay ?? 'url(#pk-black)'}
+                stroke="#000"
+                strokeWidth={0.75}
+                style={isLit ? { filter: `drop-shadow(0 0 6px ${overlay})` } : undefined}
+              />
+              {isLit && (
+                <text
+                  x={x + BLACK_W / 2}
+                  y={BLACK_H - 8}
+                  textAnchor="middle"
+                  fontSize={8.5}
+                  fontWeight={700}
+                  fill="#0f1020"
+                >
+                  {pitchClassName(midi, naming)}
+                </text>
+              )}
+            </g>
+          );
+        })}
       </svg>
     </div>
   );
